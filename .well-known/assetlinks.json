@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.netlify.quinlanstandard.twa",
+      "sha256_cert_fingerprints": [
+        "18:71:A4:58:40:16:A3:C4:BF:F7:AA:67:DD:45:4F:B1:6D:58:11:B7:6A:6B:65:E6:0E:DF:CC:9A:D1:94:8B:65"
+      ]
+    }
+  }
+]
