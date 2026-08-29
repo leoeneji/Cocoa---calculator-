@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Cocoa Purchase Calculator</title>
+<meta name="description" content="Calculate effective weight and total purchase cost for cocoa bought in bags, with average moisture deduction, in Naira." />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#1B1224" />
+
+<!-- PWA manifest -->
+<link rel="manifest" href="/manifest.json" />
+
+<!-- Home screen icons -->
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+<link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+<link rel="apple-touch-icon" href="/icon-192.png" />
+
+<!-- iOS standalone app behaviour -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Cocoa Calculator" />
+
+<!-- Android/Chrome standalone app behaviour -->
+<meta name="mobile-web-app-capable" content="yes" />
+
+<!-- Paystack checkout popup -->
+<script src="https://js.paystack.co/v2/inline.js"></script>
+<style>
+  :root{
+    --bg-top:#1B1224; --bg-bottom:#120B18;
+    --card:#241A30; --border:#3A2A44; --input-bg:#2E2140; --input-border:#4A3658;
+    --accent:#F2A93B; --text:#F5EFFA; --muted:#9C8FAE; --label:#D6C9E0;
+    --teal:#1F9E86; --rust:#D6572D; --err-border:#C1543C; --err-text:#E08469;
+    --faint:#6B5C82; --faint2:#7E6E96;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:linear-gradient(to bottom, var(--bg-top), var(--bg-bottom));
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);
+    padding:32px 16px;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .serif{ font-family:Georgia, "Times New Roman", serif; }
+  .wrap{max-width:480px;margin:0 auto;}
+  .header{display:flex;align-items:center;gap:12px;margin-bottom:24px;}
+  .badge{width:48px;height:48px;flex-shrink:0;border-radius:999px;background:var(--input-bg);
+    border:1px solid var(--input-border);display:flex;align-items:center;justify-content:center;}
+  h1{font-size:22px;line-height:1.2;margin:0;font-weight:400;}
+  .tagline{font-size:13px;color:var(--muted);margin:2px 0 0;}
+  .card{border:1px solid var(--border);background:var(--card);border-radius:28px;padding:20px;margin-bottom:20px;}
+  .card-head{display:flex;align-items:center;justify-content:between;justify-content:space-between;margin-bottom:16px;}
+  .card-head p{font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);margin:0;}
+  button{font-family:inherit;cursor:pointer;}
+  .reset-btn{display:flex;align-items:center;gap:6px;background:none;border:none;border-radius:10px;
+    padding:10px 12px;font-size:13px;font-weight:500;color:var(--label);}
+  .reset-btn:active{background:var(--border);}
+  .reset-btn:disabled{opacity:.4;cursor:default;}
+  .grid2{display:grid;grid-template-columns:1fr;gap:16px;}
+  @media(min-width:480px){ .grid2{grid-template-columns:1fr 1fr;} }
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:0;}
+  label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--label);}
+  .input-row{display:flex;align-items:center;border-radius:10px;border:1px solid var(--input-border);
+    background:var(--input-bg);padding:0 12px;transition:border-color .15s;}
+  .input-row.error{border-color:var(--err-border);}
+  .input-row:focus-within{border-color:var(--accent);}
+  .input-row input{flex:1;min-width:0;background:transparent;border:none;outline:none;
+    padding:16px 0;font-size:17px;color:var(--text);font-family:Georgia,serif;}
+  .input-row input::placeholder{color:var(--faint);}
+  .suffix{margin-left:8px;flex-shrink:0;font-size:14px;font-weight:500;color:var(--muted);}
+  .helper{min-height:16px;font-size:12px;color:var(--faint2);margin:0;}
+  .error-msg{min-height:16px;font-size:12px;color:var(--err-text);display:flex;align-items:center;gap:4px;margin:0;}
+  .divider{border-top:1px solid var(--border);margin-top:16px;padding-top:16px;}
+  .bag-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .bag-label{width:56px;flex-shrink:0;font-size:12px;font-weight:600;text-transform:uppercase;color:var(--muted);}
+  .bag-input-row{flex:1;display:flex;align-items:center;border-radius:10px;border:1px solid var(--input-border);
+    background:var(--input-bg);padding:0 12px;}
+  .bag-input-row.error{border-color:var(--err-border);}
+  .bag-input-row:focus-within{border-color:var(--accent);}
+  .bag-input-row input{flex:1;min-width:0;background:transparent;border:none;outline:none;
+    padding:14px 0;font-size:16px;color:var(--text);font-family:Georgia,serif;}
+  .remove-btn{width:48px;height:48px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    border:none;background:none;border-radius:10px;color:var(--muted);}
+  .remove-btn:active{background:var(--border);}
+  .remove-btn:disabled{opacity:.3;}
+  #bagList{max-height:none;}
+  #bagList.scrollable{max-height:290px;overflow-y:auto;padding-right:4px;}
+  .add-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;
+    border:1.5px dashed var(--input-border);background:none;border-radius:10px;
+    padding:14px;font-size:14px;font-weight:500;color:var(--label);margin-top:8px;}
+  .add-btn:active{background:var(--border);}
+  .add-btn:disabled{opacity:.4;}
+  .avg-box{display:flex;align-items:center;gap:8px;background:var(--input-bg);border-radius:10px;
+    padding:10px 12px;font-size:13px;color:var(--label);margin-top:12px;}
+  .avg-box .val{font-family:Georgia,serif;font-size:15px;color:var(--text);}
+  .empty-msg{text-align:center;font-size:13px;color:var(--faint2);padding:24px 0;margin:0;}
+  .results-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .stat-label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin:0 0 4px;}
+  .stat-val{font-family:Georgia,serif;font-size:24px;line-height:1.15;margin:0;}
+  @media(min-width:480px){ .stat-val{font-size:28px;} }
+  .bar{height:12px;width:100%;overflow:hidden;border-radius:999px;background:var(--input-border);
+    display:flex;margin-top:20px;}
+  .bar .seg-eff{height:100%;background:var(--teal);}
+  .bar .seg-loss{height:100%;background:var(--rust);}
+  .bar-legend{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:8px;}
+  .dot{width:8px;height:8px;border-radius:999px;display:inline-block;margin-right:6px;vertical-align:middle;}
+  .secondary{margin-top:20px;padding-top:16px;border-top:1px solid var(--border);
+    display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .secondary .lbl{font-size:12px;color:var(--muted);margin:0;}
+  .secondary .val{font-family:Georgia,serif;font-size:16px;margin:2px 0 0;}
+  .formula{text-align:center;font-size:11px;color:var(--faint);margin-top:16px;line-height:1.5;}
+  svg{display:block;}
+  .market-card{border:1px solid var(--border);background:var(--card);border-radius:28px;padding:20px;margin-top:20px;}
+  .market-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .market-head .left{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);}
+  .refresh-btn{display:flex;align-items:center;gap:6px;background:var(--input-bg);border:none;border-radius:10px;
+    padding:9px 12px;font-size:13px;font-weight:500;color:var(--label);}
+  .refresh-btn:active{background:var(--border);}
+  .refresh-btn:disabled{opacity:.5;}
+  .spin{animation:spin 1s linear infinite;}
+  @keyframes spin{ to { transform:rotate(360deg); } }
+  .market-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;}
+  .market-grid .lbl{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin:0 0 4px;}
+  .market-grid .val{font-family:Georgia,serif;font-size:18px;margin:0;color:var(--text);}
+  .market-grid .date{font-size:11px;color:var(--faint2);margin:2px 0 0;}
+  .equiv-box{background:var(--input-bg);border-radius:10px;padding:10px 12px;margin-bottom:12px;}
+  .equiv-box .lbl{font-size:12px;color:var(--muted);margin:0;}
+  .equiv-box .val{font-family:Georgia,serif;font-size:20px;color:var(--accent);margin:2px 0 0;}
+  .compare-box{border-radius:10px;padding:10px 12px;font-size:13px;margin-bottom:8px;}
+  .compare-box.good{background:rgba(31,158,134,.15);color:#6FD8C4;}
+  .compare-box.warn{background:rgba(214,87,45,.15);color:#F0A585;}
+  .compare-box.neutral{background:var(--input-bg);color:var(--label);}
+  .compare-box .tag{font-weight:600;margin:0;}
+  .compare-box .detail{font-size:12px;opacity:.9;margin:2px 0 0;}
+  .market-note{font-size:11px;color:var(--faint);margin:0;}
+  .market-disclaimer{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:var(--faint);margin-top:12px;line-height:1.5;}
+
+  /* Paywall */
+  .paywall{text-align:center;padding:8px 4px;}
+  .paywall .price{font-family:Georgia,serif;font-size:32px;color:var(--accent);margin:8px 0 4px;}
+  .paywall .price-note{font-size:12px;color:var(--muted);margin:0 0 20px;}
+  .paywall ul{list-style:none;padding:0;margin:0 0 20px;text-align:left;}
+  .paywall li{font-size:13px;color:var(--label);padding:6px 0 6px 22px;position:relative;}
+  .paywall li:before{content:"✓";position:absolute;left:0;color:var(--teal);font-weight:700;}
+  .pay-btn{width:100%;background:var(--accent);color:#1B1224;border:none;border-radius:10px;
+    padding:16px;font-size:15px;font-weight:600;margin-bottom:10px;}
+  .pay-btn:active{opacity:.85;}
+  .pay-btn:disabled{opacity:.5;}
+  .restore-link{background:none;border:none;color:var(--muted);font-size:13px;text-decoration:underline;padding:8px;}
+  .restore-form{display:none;margin-top:12px;text-align:left;}
+  .restore-form.open{display:block;}
+  .paywall-msg{font-size:12px;margin-top:10px;min-height:16px;}
+  .paywall-msg.error{color:var(--err-text);}
+  .paywall-msg.success{color:var(--teal);}
+
+  /* Install gate — shown until the app is opened as an installed PWA */
+  .gate{text-align:center;padding:32px 8px;}
+  .gate .badge{margin:0 auto 20px;width:72px;height:72px;}
+  .gate h2{font-size:20px;font-weight:400;margin:0 0 8px;font-family:Georgia,serif;}
+  .gate p{font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 24px;}
+  .install-btn{width:100%;background:var(--accent);color:#1B1224;border:none;border-radius:10px;
+    padding:16px;font-size:15px;font-weight:600;margin-bottom:12px;}
+  .install-btn:active{opacity:.85;}
+  .install-btn:disabled{opacity:.4;}
+  .gate-note{font-size:12px;color:var(--faint2);line-height:1.6;text-align:left;
+    background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-top:8px;}
+  .gate-note b{color:var(--label);font-weight:600;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="installBanner" class="gate" style="display:none;padding:20px 16px;text-align:left;border:1px solid var(--border);background:var(--card);border-radius:20px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="badge" style="width:40px;height:40px;margin:0;flex-shrink:0;">
+          <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="21" fill="none" stroke="#F2A93B" stroke-width="2" stroke-dasharray="3.2 4.4"/>
+            <circle cx="24" cy="24" r="13" fill="#F2A93B"/>
+            <circle cx="14.5" cy="14" r="3.4" fill="#F2A93B"/>
+            <circle cx="33.5" cy="14" r="3.4" fill="#F2A93B"/>
+            <path d="M24 20.5c-1.7 0-3 1.4-3 2.6 0 .9.7 1.5 1.5 1.1.4-.2.9-.3 1.5-.3s1.1.1 1.5.3c.8.4 1.5-.2 1.5-1.1 0-1.2-1.3-2.6-3-2.6Z" fill="#1B1224"/>
+            <path d="M24 24.5v3.2M24 27.7c-1.4 1.2-2.6 1.6-3.6 1.3M24 27.7c1.4 1.2 2.6 1.6 3.6 1.3" stroke="#1B1224" stroke-width="1.3" stroke-linecap="round"/>
+            <circle cx="19.6" cy="21.5" r="1.1" fill="#1B1224"/>
+            <circle cx="28.4" cy="21.5" r="1.1" fill="#1B1224"/>
+          </svg>
+        </div>
+        <div style="flex:1;">
+          <p style="margin:0;font-size:14px;color:var(--text);font-weight:500;">Install for offline use</p>
+          <p style="margin:2px 0 0;font-size:12px;color:var(--muted);">Works without installing too — this just adds an icon and offline access.</p>
+        </div>
+      </div>
+      <button class="install-btn" id="installBtn" disabled style="margin-top:12px;padding:12px;font-size:14px;">Install app</button>
+      <button type="button" id="dismissBannerBtn" style="width:100%;background:none;border:none;color:var(--muted);font-size:13px;padding:8px;margin-top:2px;">Not now</button>
+      <div class="gate-note" id="iosNote" style="display:none;margin-top:10px;">
+        <b>On iPhone/iPad:</b> tap the Share icon in Safari, then choose <b>Add to Home Screen</b>.
+      </div>
+      <div class="gate-note" id="genericNote" style="display:none;margin-top:10px;">
+        Look for an install icon in your browser's address bar, or open your browser menu and choose <b>Install app</b> / <b>Add to Home screen</b>.
+      </div>
+    </div>
+
+    <div id="app">
+    <div class="header">
+      <div class="badge">
+        <svg width="28" height="28" viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="24" r="21" fill="none" stroke="#F2A93B" stroke-width="2" stroke-dasharray="3.2 4.4"/>
+          <circle cx="24" cy="24" r="13" fill="#F2A93B"/>
+          <circle cx="14.5" cy="14" r="3.4" fill="#F2A93B"/>
+          <circle cx="33.5" cy="14" r="3.4" fill="#F2A93B"/>
+          <path d="M24 20.5c-1.7 0-3 1.4-3 2.6 0 .9.7 1.5 1.5 1.1.4-.2.9-.3 1.5-.3s1.1.1 1.5.3c.8.4 1.5-.2 1.5-1.1 0-1.2-1.3-2.6-3-2.6Z" fill="#1B1224"/>
+          <path d="M24 24.5v3.2M24 27.7c-1.4 1.2-2.6 1.6-3.6 1.3M24 27.7c1.4 1.2 2.6 1.6 3.6 1.3" stroke="#1B1224" stroke-width="1.3" stroke-linecap="round"/>
+          <circle cx="19.6" cy="21.5" r="1.1" fill="#1B1224"/>
+          <circle cx="28.4" cy="21.5" r="1.1" fill="#1B1224"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="serif">Cocoa Purchase Calculator</h1>
+        <p class="tagline">Weigh in, price it, know your true cost</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <p>Purchase details</p>
+        <button class="reset-btn" id="resetBtn" disabled>&#8634; Reset</button>
+      </div>
+
+      <div class="grid2">
+        <div class="field">
+          <label>&#9878; Purchase weight</label>
+          <div class="input-row" id="row-weight">
+            <input id="weight" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 500" />
+            <span class="suffix">kg</span>
+          </div>
+          <p class="error-msg" id="err-weight"></p>
+        </div>
+        <div class="field">
+          <label>&#8358; Price per kg</label>
+          <div class="input-row" id="row-price">
+            <input id="price" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 3500" />
+            <span class="suffix">&#8358;</span>
+          </div>
+          <p class="error-msg" id="err-price"></p>
+        </div>
+      </div>
+
+      <div class="divider">
+        <div class="field">
+          <label>&#128230; Number of bags</label>
+          <div class="input-row" id="row-bagCount">
+            <input id="bagCount" type="text" inputmode="numeric" autocomplete="off" placeholder="e.g. 10" />
+            <span class="suffix">bags</span>
+          </div>
+          <p class="helper" id="help-bagCount">One moisture reading per bag &mdash; bags above 8% are averaged below</p>
+          <p class="error-msg" id="err-bagCount"></p>
+        </div>
+
+        <div id="bagList" style="margin-top:4px;"></div>
+
+        <p class="error-msg" id="err-readings"></p>
+
+        <button class="add-btn" id="addBagBtn">&#43; Add bag</button>
+
+        <div class="avg-box" id="avgBox" style="display:none;flex-direction:column;align-items:flex-start;gap:6px;">
+          <span id="bagsAboveLine">Bags above 8%: <span class="val" id="bagsAboveVal"></span></span>
+          <span id="avgExcessLine" style="padding-left:0;">Average excess moisture: <span class="val" id="avgVal"></span></span>
+          <span id="weightPerBagLine">Weight per bag: <span class="val" id="weightPerBagVal"></span></span>
+          <span id="noExcessLine" style="display:none;color:var(--muted);">No bags above 8% &mdash; no moisture deduction applied.</span>
+        </div>
+      </div>
+
+      <div class="divider">
+        <div class="field">
+          <label>&#128179; Other expenses</label>
+          <div class="input-row" id="row-expenses">
+            <input id="expenses" type="text" inputmode="decimal" autocomplete="off" placeholder="Optional" />
+            <span class="suffix">&#8358;</span>
+          </div>
+          <p class="helper">Transport, levies, bags, etc.</p>
+          <p class="error-msg" id="err-expenses"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="resultsCard">
+      <p class="empty-msg" id="emptyMsg">Fill in weight, price and each bag's moisture reading to see your effective weight and total cost.</p>
+      <div id="resultsBody" style="display:none;">
+        <div class="results-grid">
+          <div>
+            <p class="stat-label">Effective weight</p>
+            <p class="stat-val serif" id="statWeight" style="color:var(--text);"></p>
+          </div>
+          <div>
+            <p class="stat-label">Total purchase cost</p>
+            <p class="stat-val serif" id="statCost" style="color:var(--accent);"></p>
+          </div>
+        </div>
+        <div class="bar"><div class="seg-eff" id="segEff"></div><div class="seg-loss" id="segLoss"></div></div>
+        <div class="bar-legend">
+          <span><span class="dot" style="background:var(--teal);"></span><span id="legendEff"></span></span>
+          <span><span class="dot" style="background:var(--rust);"></span><span id="legendLoss"></span></span>
+        </div>
+        <div class="secondary">
+          <div><p class="lbl">Other expenses deducted</p><p class="val serif" id="statExpenses"></p></div>
+          <div><p class="lbl">True cost per effective kg</p><p class="val serif" id="statCostPerKg"></p></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="formula">Bags above 8% counted separately &middot; Average excess% = mean of (reading &minus; 8) for those bags &middot; Weight per bag = purchase weight &divide; total bags &middot; Moisture loss (kg) = weight per bag &times; bags above 8% &times; average excess% &middot; Effective weight = weight &minus; moisture loss &middot; Total cost = (effective weight &times; price) &minus; other expenses</p>
+
+    <div id="paywallCard" class="market-card" style="display:none;">
+      <div class="paywall">
+        <span class="left" style="display:block;margin-bottom:4px;">&#127760; Market price insight</span>
+        <p class="price" id="paywallPrice">&#8358;2,500</p>
+        <p class="price-note">One-time payment &middot; unlocks this device permanently</p>
+        <ul>
+          <li>Live international cocoa price (USD/tonne)</li>
+          <li>Current USD &rarr; NGN exchange rate</li>
+          <li>Ikom-origin benchmark, net of your transport &amp; domestic costs</li>
+          <li>Instant comparison against your entered purchase price</li>
+        </ul>
+        <button class="pay-btn" id="payBtn">Pay with Paystack</button>
+        <button type="button" class="restore-link" id="showRestoreBtn">Already paid? Restore purchase</button>
+        <div class="restore-form" id="restoreForm">
+          <div class="input-row" id="row-restoreEmail">
+            <input id="restoreEmail" type="text" inputmode="email" autocomplete="email" placeholder="Email used at checkout" />
+          </div>
+          <button class="pay-btn" id="restoreBtn" style="margin-top:8px;">Restore</button>
+        </div>
+        <p class="paywall-msg" id="paywallMsg"></p>
+      </div>
+    </div>
+
+    <div class="market-card" id="marketCard" style="display:none;">
+      <div class="market-head">
+        <span class="left">&#127760; Market price insight</span>
+        <button class="refresh-btn" id="marketBtn">
+          <span id="marketBtnIcon">&#8635;</span>
+          <span id="marketBtnLabel">Check price</span>
+        </button>
+      </div>
+
+      <p class="market-note" id="marketError" style="display:none;color:var(--err-text);"></p>
+      <p class="market-note" id="marketIdle">Compare your entered price per kg against the international cocoa price, converted to Naira at the current exchange rate &mdash; net of your transport and domestic costs to reach an Ikom-origin benchmark.</p>
+      <p class="market-note" id="marketLoadingMsg" style="display:none;">Checking current international price and exchange rate&hellip;</p>
+
+      <div class="market-grid" style="margin-top:12px;">
+        <div class="field" style="margin-bottom:0;">
+          <label>&#128667; Transport (Ikom &rarr; Lagos)</label>
+          <div class="input-row" id="row-transportCost">
+            <input id="transportCost" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 35000" />
+            <span class="suffix">&#8358;/tonne</span>
+          </div>
+          <p class="helper">Your current haulage rate &mdash; optional</p>
+        </div>
+        <div class="field" style="margin-bottom:0;">
+          <label>&#128179; Domestic expenses</label>
+          <div class="input-row" id="row-domesticExpenses">
+            <input id="domesticExpenses" type="text" inputmode="decimal" autocomplete="off" placeholder="e.g. 10000" />
+            <span class="suffix">&#8358;/tonne</span>
+          </div>
+          <p class="helper">Levies, loading, handling &mdash; optional</p>
+        </div>
+      </div>
+
+      <div id="marketResult" style="display:none;margin-top:12px;">
+        <div class="market-grid">
+          <div>
+            <p class="lbl">Int'l cocoa price</p>
+            <p class="val" id="intlPriceVal"></p>
+            <p class="date" id="intlPriceDate"></p>
+          </div>
+          <div>
+            <p class="lbl">USD &rarr; NGN rate</p>
+            <p class="val" id="fxRateVal"></p>
+            <p class="date" id="fxRateDate"></p>
+          </div>
+        </div>
+        <div class="equiv-box">
+          <p class="lbl">Lagos-equivalent price (before logistics)</p>
+          <p class="val" id="equivVal" style="font-size:16px;color:var(--text);"></p>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--input-border);">
+            <p class="lbl">Ikom-origin benchmark (after transport &amp; domestic costs)</p>
+            <p class="val" id="benchmarkVal"></p>
+            <p class="date" id="logisticsNote"></p>
+          </div>
+        </div>
+        <div class="compare-box" id="compareBox" style="display:none;">
+          <p class="tag" id="compareTag"></p>
+          <p class="detail" id="compareDetail"></p>
+        </div>
+        <p class="market-note" id="compareEmpty">Enter a price per kg above to compare it against this figure.</p>
+        <p class="market-note" id="marketSourceNote"></p>
+        <p class="market-note" id="cachedNote" style="display:none;color:var(--accent);"></p>
+      </div>
+
+      <p class="market-disclaimer">&#128200; International price for context only &mdash; not trading advice. Transport and domestic cost figures are whatever you enter above; there's no reliable universal average for the Ikom&ndash;Lagos route, so use your current rate. Verify everything with your own market sources before pricing a purchase. Requires an internet connection.</p>
+    </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  var MAX_BAGS = 100;
+  var state = { weight:"", price:"", bagCount:"", expenses:"", readings:[""] };
+
+  var NAIRA = new Intl.NumberFormat("en-NG", { style:"currency", currency:"NGN", maximumFractionDigits:2 });
+  var KG = new Intl.NumberFormat("en-NG", { maximumFractionDigits:2 });
+  var PCT = new Intl.NumberFormat("en-NG", { maximumFractionDigits:2 });
+
+  function numOrNull(s){
+    if(s.trim()==="") return null;
+    var n = Number(s);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function el(id){ return document.getElementById(id); }
+
+  function setError(id, msg){
+    var e = el("err-"+id);
+    if(e) e.textContent = msg || "";
+    var row = el("row-"+id);
+    if(row) row.classList.toggle("error", !!msg);
+  }
+
+  function renderBagList(){
+    var list = el("bagList");
+    list.className = state.readings.length > 4 ? "scrollable" : "";
+    list.innerHTML = "";
+    state.readings.forEach(function(val, idx){
+      var row = document.createElement("div");
+      row.className = "bag-row";
+
+      var label = document.createElement("span");
+      label.className = "bag-label";
+      label.textContent = "Bag " + (idx+1);
+
+      var inputRow = document.createElement("div");
+      inputRow.className = "bag-input-row";
+      var input = document.createElement("input");
+      input.type = "text";
+      input.inputMode = "decimal";
+      input.autocomplete = "off";
+      input.placeholder = "e.g. 8";
+      input.value = val;
+      input.addEventListener("input", function(ev){
+        state.readings[idx] = ev.target.value;
+        compute();
+      });
+      var suffix = document.createElement("span");
+      suffix.className = "suffix";
+      suffix.textContent = "%";
+      inputRow.appendChild(input);
+      inputRow.appendChild(suffix);
+
+      var removeBtn = document.createElement("button");
+      removeBtn.className = "remove-btn";
+      removeBtn.innerHTML = "&#8722;";
+      removeBtn.disabled = state.readings.length <= 1;
+      removeBtn.addEventListener("click", function(){
+        if(state.readings.length <= 1) return;
+        state.readings.splice(idx,1);
+        state.bagCount = String(state.readings.length);
+        el("bagCount").value = state.bagCount;
+        renderBagList();
+        compute();
+      });
+
+      row.appendChild(label);
+      row.appendChild(inputRow);
+      row.appendChild(removeBtn);
+      list.appendChild(row);
+    });
+  }
+
+  function syncReadingsToCount(n){
+    var count = Math.min(Math.floor(n), MAX_BAGS);
+    var next = state.readings.slice(0, count);
+    while(next.length < count) next.push("");
+    state.readings = next;
+  }
+
+  function hasInput(){
+    return state.weight!=="" || state.price!=="" || state.bagCount!=="" || state.expenses!=="" ||
+      state.readings.some(function(r){ return r!==""; });
+  }
+
+  function compute(){
+    var w = numOrNull(state.weight);
+    var p = numOrNull(state.price);
+    var e = numOrNull(state.expenses);
+    var bagCountNum = numOrNull(state.bagCount);
+
+    var errors = {};
+
+    if(state.weight.trim()==="") errors.weight = "Enter the purchase weight.";
+    else if(isNaN(w)) errors.weight = "Numbers only.";
+    else if(w<=0) errors.weight = "Must be greater than 0.";
+
+    if(state.price.trim()==="") errors.price = "Enter the price per kg.";
+    else if(isNaN(p)) errors.price = "Numbers only.";
+    else if(p<=0) errors.price = "Must be greater than 0.";
+
+    if(state.bagCount.trim()==="") errors.bagCount = "Enter the number of bags.";
+    else if(isNaN(bagCountNum) || !Number.isInteger(bagCountNum)) errors.bagCount = "Whole numbers only.";
+    else if(bagCountNum<1) errors.bagCount = "Must be at least 1.";
+    else if(bagCountNum>MAX_BAGS) errors.bagCount = "Max " + MAX_BAGS + " bags.";
+
+    var readingErrors = state.readings.map(function(r){
+      if(r.trim()==="") return "Required.";
+      var n = Number(r);
+      if(!isFinite(n)) return "Numbers only.";
+      if(n<0 || n>20) return "Must be 0–20.";
+      return null;
+    });
+    var readingsBad = readingErrors.some(Boolean);
+
+    if(state.expenses.trim()!==""){
+      if(isNaN(e)) errors.expenses = "Numbers only.";
+      else if(e<0) errors.expenses = "Cannot be negative.";
+    }
+
+    setError("weight", errors.weight);
+    setError("price", errors.price);
+    setError("bagCount", errors.bagCount);
+    setError("expenses", errors.expenses);
+    el("err-readings").textContent = readingsBad ? "Every bag needs a moisture reading between 0 and 20%." : "";
+
+    // mark individual bag rows with errors
+    var rows = document.querySelectorAll(".bag-input-row");
+    rows.forEach(function(row, idx){ row.classList.toggle("error", !!readingErrors[idx]); });
+
+    var isValid = !errors.weight && !errors.price && !errors.bagCount && !errors.expenses && !readingsBad;
+
+    if(!isValid){
+      el("emptyMsg").style.display = "block";
+      el("resultsBody").style.display = "none";
+      el("avgBox").style.display = "none";
+      if (window.updatePriceComparison) window.updatePriceComparison(null);
+      return;
+    }
+
+    var otherExpenses = state.expenses.trim()==="" ? 0 : e;
+    var readingValues = state.readings.map(Number);
+    var excessBags = readingValues.filter(function(v){ return v > 8; });
+    var bagsAboveCount = excessBags.length;
+    var averageExcessMoisture = bagsAboveCount > 0
+      ? excessBags.reduce(function(a,b){ return a + (b - 8); }, 0) / bagsAboveCount
+      : 0;
+    // Weight per bag = purchase weight ÷ total number of bags (all bags,
+    // not just the ones above 8%).
+    var weightPerBag = readingValues.length > 0 ? w / readingValues.length : 0;
+    var moistureLossKg = bagsAboveCount > 0
+      ? weightPerBag * bagsAboveCount * (averageExcessMoisture/100)
+      : 0;
+    var effectiveWeight = w - moistureLossKg;
+    var totalCost = effectiveWeight*p - otherExpenses;
+    var costPerEffectiveKg = effectiveWeight>0 ? totalCost/effectiveWeight : 0;
+    var lossShare = w>0 ? (moistureLossKg/w)*100 : 0;
+
+    el("avgBox").style.display = "flex";
+    el("bagsAboveVal").textContent = bagsAboveCount;
+    if(bagsAboveCount > 0){
+      el("avgExcessLine").style.display = "inline";
+      el("weightPerBagLine").style.display = "inline";
+      el("noExcessLine").style.display = "none";
+      el("avgVal").textContent = PCT.format(averageExcessMoisture) + "%";
+      el("weightPerBagVal").textContent = KG.format(weightPerBag) + " kg";
+    } else {
+      el("avgExcessLine").style.display = "none";
+      el("weightPerBagLine").style.display = "none";
+      el("noExcessLine").style.display = "inline";
+    }
+
+    el("emptyMsg").style.display = "none";
+    el("resultsBody").style.display = "block";
+    el("statWeight").innerHTML = KG.format(effectiveWeight) + '<span style="font-size:14px;color:var(--muted);margin-left:4px;">kg</span>';
+    el("statCost").textContent = NAIRA.format(totalCost);
+    el("segEff").style.width = (100-lossShare) + "%";
+    el("segLoss").style.width = lossShare + "%";
+    el("legendEff").textContent = "Effective " + KG.format(effectiveWeight) + " kg";
+    el("legendLoss").textContent = "Moisture loss " + KG.format(moistureLossKg) + " kg";
+    el("statExpenses").textContent = NAIRA.format(otherExpenses);
+    el("statCostPerKg").textContent = NAIRA.format(costPerEffectiveKg);
+
+    if (window.updatePriceComparison) window.updatePriceComparison(p);
+  }
+
+  function bindField(id, transform){
+    var input = el(id);
+    input.addEventListener("input", function(ev){
+      state[id] = ev.target.value;
+      if(transform) transform(ev.target.value);
+      el("resetBtn").disabled = !hasInput();
+      compute();
+    });
+  }
+
+  bindField("weight");
+  bindField("price");
+  bindField("expenses");
+  bindField("bagCount", function(val){
+    var n = Number(val);
+    if(val.trim()!=="" && isFinite(n) && n>=1){
+      syncReadingsToCount(n);
+      renderBagList();
+    }
+  });
+
+  // Keep the market-price comparison responsive to the price field even
+  // when other fields in the form aren't valid yet.
+  el("price").addEventListener("input", function(ev){
+    var n = numOrNull(ev.target.value);
+    if (window.updatePriceComparison) window.updatePriceComparison(Number.isFinite(n) ? n : null);
+  });
+
+  el("addBagBtn").addEventListener("click", function(){
+    if(state.readings.length >= MAX_BAGS) return;
+    state.readings.push("");
+    state.bagCount = String(state.readings.length);
+    el("bagCount").value = state.bagCount;
+    renderBagList();
+    el("resetBtn").disabled = !hasInput();
+    compute();
+  });
+
+  el("resetBtn").addEventListener("click", function(){
+    state = { weight:"", price:"", bagCount:"", expenses:"", readings:[""] };
+    el("weight").value = "";
+    el("price").value = "";
+    el("bagCount").value = "";
+    el("expenses").value = "";
+    el("transportCost").value = "";
+    el("domesticExpenses").value = "";
+    ["weight","price","bagCount","expenses"].forEach(function(id){ setError(id, ""); });
+    renderBagList();
+    el("resetBtn").disabled = true;
+    compute();
+    el("transportCost").dispatchEvent(new Event("input"));
+  });
+
+  renderBagList();
+  compute();
+})();
+
+// Register the service worker so the calculator keeps working offline
+// once it's been opened at least once.
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function (err) {
+      console.warn("Service worker registration failed:", err);
+    });
+  });
+}
+
+// --- Install banner (non-blocking) -------------------------------------
+// The calculator works directly in the browser. This just offers an
+// optional install for offline access / a home-screen icon — it never
+// blocks use of the app itself.
+(function () {
+  function isStandalone() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  var banner = document.getElementById("installBanner");
+
+  if (isStandalone()) {
+    return; // already installed — nothing to prompt
+  }
+
+  if (sessionStorage && sessionStorage.getItem("cocoaInstallDismissed") === "1") {
+    return; // dismissed this session
+  }
+
+  banner.style.display = "block";
+
+  var installBtn = document.getElementById("installBtn");
+  var deferredPrompt = null;
+  var isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    installBtn.disabled = false;
+  });
+
+  installBtn.addEventListener("click", function () {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.finally(function () {
+      deferredPrompt = null;
+    });
+  });
+
+  window.addEventListener("appinstalled", function () {
+    banner.style.display = "none";
+  });
+
+  document.getElementById("dismissBannerBtn").addEventListener("click", function () {
+    banner.style.display = "none";
+    try { sessionStorage.setItem("cocoaInstallDismissed", "1"); } catch (e) {}
+  });
+
+  // If the platform never fires beforeinstallprompt (iOS Safari, some
+  // browsers), show manual instructions instead of a dead button.
+  setTimeout(function () {
+    if (deferredPrompt) return;
+    installBtn.style.display = "none";
+    document.getElementById(isIos ? "iosNote" : "genericNote").style.display = "block";
+  }, 800);
+})();
+// --- Paywall: one-time Paystack unlock ----------------------------------
+// Market Price Insight is a paid feature. Payment is verified
+// server-side (never trust the client "success" callback alone), and
+// the unlock is remembered both on this device (localStorage) and on
+// Netlify's servers (keyed by email) so "Restore purchase" can re-unlock
+// on a different device without paying twice.
+(function () {
+  // TODO: replace with your real Paystack PUBLIC key (safe to expose —
+  // it's meant to be public). Get it from Paystack dashboard → Settings
+  // → API Keys & Webhooks.
+  var PAYSTACK_PUBLIC_KEY = "pk_test_REPLACE_WITH_YOUR_PUBLIC_KEY";
+
+  // Must exactly match UNLOCK_PRICE_KOBO set in Netlify's environment
+  // variables for the verify-payment function — 250000 kobo = ₦2,500.
+  var UNLOCK_PRICE_KOBO = 250000;
+  var UNLOCK_PRICE_NAIRA = UNLOCK_PRICE_KOBO / 100;
+
+  var UNLOCK_KEY = "cocoaProUnlocked";
+
+  function el(id) { return document.getElementById(id); }
+
+  function isUnlocked() {
+    try { return localStorage.getItem(UNLOCK_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  function setUnlocked(email) {
+    try {
+      localStorage.setItem(UNLOCK_KEY, "1");
+      if (email) localStorage.setItem("cocoaProEmail", email);
+    } catch (e) { /* ignore */ }
+  }
+
+  function showMsg(text, kind) {
+    var m = el("paywallMsg");
+    m.textContent = text;
+    m.className = "paywall-msg" + (kind ? " " + kind : "");
+  }
+
+  function revealApp() {
+    el("paywallCard").style.display = "none";
+    el("marketCard").style.display = "block";
+    // initMarketPriceInsight is a hoisted function declaration further
+    // down in this same script, so it's safe to call by name here even
+    // though this code runs earlier in the file's execution order.
+    initMarketPriceInsight();
+  }
+
+  function showPaywall() {
+    el("paywallCard").style.display = "block";
+    el("marketCard").style.display = "none";
+  }
+
+  el("paywallPrice").textContent = "₦" + UNLOCK_PRICE_NAIRA.toLocaleString("en-NG");
+
+  if (isUnlocked()) {
+    revealApp();
+  } else {
+    showPaywall();
+  }
+
+  el("payBtn").addEventListener("click", function () {
+    if (typeof PaystackPop === "undefined") {
+      showMsg("Payment system failed to load. Check your connection and reload the page.", "error");
+      return;
+    }
+    if (PAYSTACK_PUBLIC_KEY.indexOf("REPLACE_WITH") !== -1) {
+      showMsg("Payments aren't configured yet on this deployment.", "error");
+      return;
+    }
+
+    var email = window.prompt("Enter your email for the payment receipt:");
+    if (!email) return;
+
+    var payBtn = el("payBtn");
+    payBtn.disabled = true;
+    showMsg("Opening secure payment window…", "");
+
+    var popup = new PaystackPop();
+    popup.newTransaction({
+      key: PAYSTACK_PUBLIC_KEY,
+      email: email,
+      amount: UNLOCK_PRICE_KOBO,
+      currency: "NGN",
+      onSuccess: function (transaction) {
+        showMsg("Payment received — verifying…", "");
+        fetch("/.netlify/functions/verify-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "verify", reference: transaction.reference }),
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (json) {
+            payBtn.disabled = false;
+            if (json.unlocked) {
+              setUnlocked(json.email);
+              showMsg("Payment verified — unlocked!", "success");
+              setTimeout(revealApp, 600);
+            } else {
+              showMsg(json.reason || json.error || "Couldn't verify this payment. Contact support with your reference: " + transaction.reference, "error");
+            }
+          })
+          .catch(function () {
+            payBtn.disabled = false;
+            showMsg("Payment received but verification failed — contact support with reference: " + transaction.reference, "error");
+          });
+      },
+      onCancel: function () {
+        payBtn.disabled = false;
+        showMsg("Payment cancelled.", "");
+      },
+    });
+  });
+
+  el("showRestoreBtn").addEventListener("click", function () {
+    el("restoreForm").classList.toggle("open");
+  });
+
+  el("restoreBtn").addEventListener("click", function () {
+    var email = (el("restoreEmail").value || "").trim();
+    if (!email) {
+      showMsg("Enter the email you used at checkout.", "error");
+      return;
+    }
+    var btn = el("restoreBtn");
+    btn.disabled = true;
+    showMsg("Checking…", "");
+    fetch("/.netlify/functions/verify-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "restore", email: email }),
+    })
+      .then(function (res) { return res.json(); })
+      .then(function (json) {
+        btn.disabled = false;
+        if (json.unlocked) {
+          setUnlocked(email);
+          showMsg("Purchase found — unlocked!", "success");
+          setTimeout(revealApp, 600);
+        } else {
+          showMsg("No purchase found for that email.", "error");
+        }
+      })
+      .catch(function () {
+        btn.disabled = false;
+        showMsg("Couldn't check purchase records. Try again shortly.", "error");
+      });
+  });
+})();
+
+// --- Market price insight ---------------------------------------------
+// Calls this site's own Netlify serverless function (same origin) so no
+// API key ever reaches the browser. Works whenever the device is online,
+// including once the app is installed/offline-capable — it just needs a
+// live connection at the moment you tap "Check price". Only initialized
+// once the paywall above confirms the feature is unlocked.
+function initMarketPriceInsight() {
+  if (window.__marketPriceInsightStarted) return;
+  window.__marketPriceInsightStarted = true;
+
+  var NAIRA2 = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 2 });
+  var NUM2 = new Intl.NumberFormat("en-NG", { maximumFractionDigits: 2 });
+  var PCT2 = new Intl.NumberFormat("en-NG", { maximumFractionDigits: 2 });
+  var CACHE_KEY = "cocoaMarketPriceCache";
+
+  var marketData = null;
+  var cachedAt = null;      // timestamp of the marketData currently shown
+  var showingCached = false; // true when marketData came from localStorage, not a fresh fetch
+  var currentPrice = null;
+  var loading = false;
+
+  function el(id) { return document.getElementById(id); }
+
+  function saveCache(data) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ data: data, savedAt: Date.now() }));
+    } catch (e) { /* storage unavailable — safe to ignore */ }
+  }
+
+  function loadCache() {
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function formatCachedTime(ms) {
+    try {
+      return new Intl.DateTimeFormat("en-NG", { dateStyle: "medium", timeStyle: "short" }).format(new Date(ms));
+    } catch (e) {
+      return new Date(ms).toLocaleString();
+    }
+  }
+
+  function render() {
+    el("marketError").style.display = "none";
+    el("marketIdle").style.display = "none";
+    el("marketLoadingMsg").style.display = "none";
+    el("marketResult").style.display = "none";
+
+    var btn = el("marketBtn");
+    var icon = el("marketBtnIcon");
+    var label = el("marketBtnLabel");
+    btn.disabled = loading;
+    icon.className = loading ? "spin" : "";
+    label.textContent = marketData ? "Refresh" : "Check price";
+
+    if (loading) {
+      el("marketLoadingMsg").style.display = "block";
+      return;
+    }
+
+    if (!marketData) {
+      el("marketIdle").style.display = "block";
+      return;
+    }
+
+    el("marketResult").style.display = "block";
+    el("intlPriceVal").textContent = "$" + NUM2.format(marketData.international_price_usd_per_tonne) + "/tonne";
+    el("intlPriceDate").textContent = marketData.price_reference_date || "";
+    el("fxRateVal").textContent = NUM2.format(marketData.usd_ngn_rate);
+    el("fxRateDate").textContent = marketData.rate_reference_date || "";
+
+    var localEquivalent = (marketData.international_price_usd_per_tonne / 1000) * marketData.usd_ngn_rate;
+    el("equivVal").textContent = NAIRA2.format(localEquivalent) + "/kg";
+    el("marketSourceNote").textContent = marketData.note || "";
+
+    var cachedNote = el("cachedNote");
+    if (showingCached && cachedAt) {
+      cachedNote.style.display = "block";
+      cachedNote.textContent = "Showing last checked price — as of " + formatCachedTime(cachedAt) + " (offline or refresh failed).";
+    } else {
+      cachedNote.style.display = "none";
+    }
+
+    var transportNum = numOrNull2(el("transportCost").value);
+    var domesticNum = numOrNull2(el("domesticExpenses").value);
+    var logisticsPerKg =
+      (transportNum && !isNaN(transportNum) ? transportNum : 0) / 1000 +
+      (domesticNum && !isNaN(domesticNum) ? domesticNum : 0) / 1000;
+    var benchmark = Math.max(0, localEquivalent - logisticsPerKg);
+
+    el("benchmarkVal").textContent = NAIRA2.format(benchmark) + "/kg";
+    el("logisticsNote").textContent = logisticsPerKg > 0
+      ? "Netted out " + NAIRA2.format(logisticsPerKg) + "/kg for transport + domestic costs entered above."
+      : "";
+
+    var compareBox = el("compareBox");
+    var compareEmpty = el("compareEmpty");
+    if (currentPrice != null && benchmark > 0) {
+      var diffPct = ((currentPrice - benchmark) / benchmark) * 100;
+      var tag, tone;
+      if (diffPct < -5) { tag = "Below international-equivalent price"; tone = "good"; }
+      else if (diffPct > 5) { tag = "Above international-equivalent price"; tone = "warn"; }
+      else { tag = "Close to international-equivalent price"; tone = "neutral"; }
+
+      compareBox.style.display = "block";
+      compareBox.className = "compare-box " + tone;
+      el("compareTag").textContent = tag;
+      el("compareDetail").textContent =
+        "Your entered price is " + (diffPct >= 0 ? "+" : "") + PCT2.format(diffPct) + "% vs the Ikom-origin benchmark price.";
+      compareEmpty.style.display = "none";
+    } else {
+      compareBox.style.display = "none";
+      compareEmpty.style.display = "block";
+    }
+  }
+
+  function numOrNull2(s) {
+    if (!s || s.trim() === "") return null;
+    var n = Number(s);
+    return isFinite(n) ? n : NaN;
+  }
+
+  window.updatePriceComparison = function (priceValue) {
+    currentPrice = priceValue;
+    if (marketData) render();
+  };
+
+  // Re-render immediately when the logistics fields change, so the
+  // benchmark and comparison stay live even without re-fetching prices.
+  el("transportCost").addEventListener("input", function () { if (marketData) render(); });
+  el("domesticExpenses").addEventListener("input", function () { if (marketData) render(); });
+
+  async function fetchMarketPrice() {
+    // Offline: don't even attempt the network call — the calculator
+    // itself still works, only this live-data feature needs a
+    // connection. Fall back to the last cached price if we have one.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      var cached = loadCache();
+      if (cached) {
+        marketData = cached.data;
+        cachedAt = cached.savedAt;
+        showingCached = true;
+        el("marketError").style.display = "block";
+        el("marketError").textContent =
+          "You're offline — market price needs an internet connection. Your calculator still works offline; showing the last price checked below.";
+      } else {
+        marketData = null;
+        el("marketError").style.display = "block";
+        el("marketError").textContent =
+          "You're offline — market price needs an internet connection. Your calculator still works offline.";
+      }
+      loading = false;
+      render();
+      return;
+    }
+
+    loading = true;
+    render();
+    try {
+      var res = await fetch("/.netlify/functions/market-price");
+      var json = await res.json();
+      if (!res.ok || json.error) throw new Error(json.error || "Request failed");
+      marketData = json;
+      cachedAt = Date.now();
+      showingCached = false;
+      saveCache(json);
+      el("marketError").style.display = "none";
+    } catch (err) {
+      var cachedFallback = loadCache();
+      if (cachedFallback) {
+        marketData = cachedFallback.data;
+        cachedAt = cachedFallback.savedAt;
+        showingCached = true;
+        el("marketError").style.display = "block";
+        el("marketError").textContent =
+          "Couldn't refresh the price. Check your internet connection — showing the last price checked below.";
+      } else {
+        marketData = null;
+        el("marketError").style.display = "block";
+        el("marketError").textContent =
+          "Couldn't fetch the current market price. Check your internet connection and try again.";
+      }
+    } finally {
+      loading = false;
+      render();
+    }
+  }
+
+  el("marketBtn").addEventListener("click", fetchMarketPrice);
+
+  // On load, silently show any previously cached price (without
+  // triggering a network call) so returning users see something
+  // useful immediately, clearly marked as a past check.
+  (function initFromCache() {
+    var cached = loadCache();
+    if (cached) {
+      marketData = cached.data;
+      cachedAt = cached.savedAt;
+      showingCached = true;
+    }
+    render();
+  })();
+}
+</script>
+</body>
+</html>
