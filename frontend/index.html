@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Cocoa Intelligence Hub</title>
+
+    <meta
+        name="description"
+        content="Cocoa Intelligence Hub — market intelligence, ML forecasting, risk analysis and Nigerian FOB estimation."
+    >
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <!-- ================= SIDEBAR ================= -->
+
+    <aside class="sidebar">
+
+        <div class="brand">
+            <div class="brand-mark">🍫</div>
+
+            <div>
+                <h1>Cocoa Intelligence</h1>
+                <span>HUB</span>
+            </div>
+        </div>
+
+        <nav class="navigation">
+
+            <a href="#" class="nav-item active">
+                <span>⌂</span>
+                Dashboard
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>◈</span>
+                Market Prices
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>₦</span>
+                FX Intelligence
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>◉</span>
+                Weather & Supply
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>◌</span>
+                News & Events
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>↗</span>
+                Signals
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>⌁</span>
+                ML Forecasts
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>🇳🇬</span>
+                Nigeria Price Radar
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>▣</span>
+                Cocoa Calculator
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>◫</span>
+                Data Explorer
+            </a>
+
+            <a href="#" class="nav-item">
+                <span>⚙</span>
+                Settings
+            </a>
+
+        </nav>
+
+        <div class="sidebar-footer">
+            <span class="status-dot"></span>
+            Intelligence Engine Online
+        </div>
+
+    </aside>
+
+
+    <!-- ================= MAIN ================= -->
+
+    <main class="main-content">
+
+        <!-- HEADER -->
+
+        <header class="topbar">
+
+            <div>
+                <p class="eyebrow">COCOA MARKET INTELLIGENCE</p>
+
+                <h2>Market Dashboard</h2>
+
+                <p class="subtitle">
+                    Evidence-based intelligence for cocoa traders and exporters.
+                </p>
+            </div>
+
+            <div class="system-status">
+
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    Live
+                </div>
+
+                <span id="last-updated">
+                    Updating...
+                </span>
+
+            </div>
+
+        </header>
+
+
+        <!-- ================= MARKET CARDS ================= -->
+
+        <section class="section">
+
+            <div class="section-heading">
+
+                <div>
+                    <h3>International Cocoa Market</h3>
+
+                    <p>
+                        Current benchmark prices from available market sources.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="market-grid">
+
+                <!-- London -->
+
+                <article class="market-card">
+
+                    <div class="card-top">
+                        <span>London Futures</span>
+                        <span class="market-icon">£</span>
+                    </div>
+
+                    <div
+                        class="market-value"
+                        id="london-price"
+                    >
+                        —
+                    </div>
+
+                    <div class="market-meta">
+                        GBP / MT
+                    </div>
+
+                    <div
+                        class="market-change"
+                        id="london-change"
+                    >
+                        —
+                    </div>
+
+                </article>
+
+
+                <!-- New York -->
+
+                <article class="market-card">
+
+                    <div class="card-top">
+                        <span>New York Futures</span>
+                        <span class="market-icon">$</span>
+                    </div>
+
+                    <div
+                        class="market-value"
+                        id="new-york-price"
+                    >
+                        —
+                    </div>
+
+                    <div class="market-meta">
+                        USD / MT
+                    </div>
+
+                    <div
+                        class="market-change"
+                        id="new-york-change"
+                    >
+                        —
+                    </div>
+
+                </article>
+
+
+                <!-- ICCO USD -->
+
+                <article class="market-card">
+
+                    <div class="card-top">
+                        <span>ICCO Benchmark</span>
+                        <span class="market-icon">◎</span>
+                    </div>
+
+                    <div
+                        class="market-value"
+                        id="icco-usd-price"
+                    >
+                        —
+                    </div>
+
+                    <div class="market-meta">
+                        USD / MT
+                    </div>
+
+                    <div
+                        class="market-change"
+                        id="icco-change"
+                    >
+                        —
+                    </div>
+
+                </article>
+
+
+                <!-- FX -->
+
+                <article class="market-card fx-card">
+
+                    <div class="card-top">
+                        <span>USD / NGN</span>
+                        <span class="market-icon">₦</span>
+                    </div>
+
+                    <div
+                        class="market-value"
+                        id="usd-ngn"
+                    >
+                        —
+                    </div>
+
+                    <div class="market-meta">
+                        Nigerian Naira
+                    </div>
+
+                    <div
+                        class="market-change"
+                        id="fx-change"
+                    >
+                        Live FX
+                    </div>
+
+                </article>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================= ML INTELLIGENCE ================= -->
+
+        <section class="section">
+
+            <div class="section-heading">
+
+                <div>
+                    <h3>ML Price Intelligence</h3>
+
+                    <p>
+                        Multi-model cocoa price forecasting engine.
+                    </p>
+                </div>
+
+                <span class="experimental-badge">
+                    EXPERIMENTAL
+                </span>
+
+            </div>
+
+
+            <div class="intelligence-grid">
+
+                <!-- Main forecast -->
+
+                <article class="forecast-card">
+
+                    <div class="card-top">
+
+                        <div>
+                            <span>Ensemble Forecast</span>
+
+                            <small>
+                                XGBoost + Random Forest + Time-Series
+                            </small>
+                        </div>
+
+                        <span class="forecast-symbol">
+                            ↗
+                        </span>
+
+                    </div>
+
+
+                    <div class="forecast-main">
+
+                        <div>
+
+                            <span class="forecast-label">
+                                Expected Price
+                            </span>
+
+                            <strong id="ensemble-forecast">
+                                —
+                            </strong>
+
+                            <span class="forecast-unit">
+                                USD / MT
+                            </span>
+
+                        </div>
+
+
+                        <div
+                            class="forecast-direction"
+                            id="forecast-direction"
+                        >
+                            —
+                        </div>
+
+                    </div>
+
+
+                    <div class="forecast-details">
+
+                        <div>
+                            <span>Expected Change</span>
+                            <strong id="expected-change">—</strong>
+                        </div>
+
+                        <div>
+                            <span>Confidence</span>
+                            <strong id="forecast-confidence">—</strong>
+                        </div>
+
+                        <div>
+                            <span>Forecast Range</span>
+                            <strong id="forecast-range">—</strong>
+                        </div>
+
+                        <div>
+                            <span>Model Status</span>
+                            <strong>Experimental</strong>
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- Model breakdown -->
+
+                <article class="model-card">
+
+                    <div class="card-top">
+
+                        <span>Model Breakdown</span>
+
+                        <span class="market-icon">
+                            ML
+                        </span>
+
+                    </div>
+
+
+                    <div class="model-row">
+
+                        <span>XGBoost</span>
+
+                        <strong id="xgb-forecast">
+                            —
+                        </strong>
+
+                    </div>
+
+
+                    <div class="model-row">
+
+                        <span>Random Forest</span>
+
+                        <strong id="rf-forecast">
+                            —
+                        </strong>
+
+                    </div>
+
+
+                    <div class="model-row">
+
+                        <span>Time-Series</span>
+
+                        <strong id="ts-forecast">
+                            —
+                        </strong>
+
+                    </div>
+
+
+                    <div class="model-row ensemble-row">
+
+                        <span>Ensemble</span>
+
+                        <strong id="model-ensemble">
+                            —
+                        </strong>
+
+                    </div>
+
+                    <p class="model-note">
+                        Current models are experimental pending
+                        larger historical validation.
+                    </p>
+
+                </article>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================= RISK + SIGNAL ================= -->
+
+        <section class="section">
+
+            <div class="decision-grid">
+
+
+                <!-- Risk -->
+
+                <article class="panel-card">
+
+                    <div class="panel-header">
+
+                        <div>
+                            <span class="panel-label">
+                                MARKET REGIME
+                            </span>
+
+                            <h3 id="market-regime">
+                                —
+                            </h3>
+                        </div>
+
+                        <span class="risk-icon">
+                            ◉
+                        </span>
+
+                    </div>
+
+
+                    <div class="risk-content">
+
+                        <div class="risk-meter">
+
+                            <div
+                                class="risk-meter-fill"
+                                id="risk-meter-fill"
+                            ></div>
+
+                        </div>
+
+                        <div class="risk-footer">
+
+                            <span>Risk Level</span>
+
+                            <strong id="risk-level">
+                                —
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- Signal -->
+
+                <article class="panel-card signal-panel">
+
+                    <div class="panel-header">
+
+                        <div>
+                            <span class="panel-label">
+                                CURRENT SIGNAL
+                            </span>
+
+                            <h3 id="signal-action">
+                                —
+                            </h3>
+                        </div>
+
+                        <span
+                            class="signal-badge"
+                            id="signal-badge"
+                        >
+                            —
+                        </span>
+
+                    </div>
+
+
+                    <p
+                        class="signal-summary"
+                        id="signal-summary"
+                    >
+                        Waiting for intelligence engine...
+                    </p>
+
+
+                    <div class="signal-footer">
+
+                        <span>
+                            Confidence:
+                            <strong id="signal-confidence">
+                                —
+                            </strong>
+                        </span>
+
+                        <span>
+                            Severity:
+                            <strong id="signal-severity">
+                                —
+                            </strong>
+                        </span>
+
+                    </div>
+
+                </article>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================= NIGERIAN FOB ================= -->
+
+        <section class="section">
+
+            <div class="section-heading">
+
+                <div>
+
+                    <h3>Nigerian Cocoa Price Intelligence</h3>
+
+                    <p>
+                        Automatically derived FOB-equivalent estimate
+                        from international prices, FX and validated cost inputs.
+                    </p>
+
+                </div>
+
+                <span class="nigeria-badge">
+                    NIGERIA
+                </span>
+
+            </div>
+
+
+            <article class="fob-card">
+
+                <div class="fob-main">
+
+                    <span class="fob-label">
+                        Estimated Nigerian FOB
+                    </span>
+
+                    <strong id="local-fob">
+                        —
+                    </strong>
+
+                    <span>
+                        NGN / MT
+                    </span>
+
+                </div>
+
+
+                <div class="fob-components">
+
+                    <div>
+                        <span>International Forecast</span>
+                        <strong id="fob-international">
+                            —
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>FX Forecast</span>
+                        <strong id="fob-fx">
+                            —
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>Cost Stack</span>
+                        <strong id="fob-cost-stack">
+                            —
+                        </strong>
+                    </div>
+
+                    <div>
+                        <span>FOB Range</span>
+                        <strong id="fob-range">
+                            —
+                        </strong>
+                    </div>
+
+                </div>
+
+
+                <div class="fob-notice">
+
+                    <span>ⓘ</span>
+
+                    <p>
+                        FOB estimation uses validated market inputs.
+                        Where required data is unavailable, the system
+                        will identify the missing input rather than fabricate
+                        a value.
+                    </p>
+
+                </div>
+
+            </article>
+
+        </section>
+
+
+        <!-- ================= WEATHER + NEWS ================= -->
+
+        <section class="section">
+
+            <div class="two-column-grid">
+
+
+                <!-- Weather -->
+
+                <article class="panel-card">
+
+                    <div class="panel-header">
+
+                        <div>
+
+                            <span class="panel-label">
+                                WEATHER & SUPPLY RISK
+                            </span>
+
+                            <h3>
+                                Cocoa Weather Intelligence
+                            </h3>
+
+                        </div>
+
+                        <span>
+                            ☁
+                        </span>
+
+                    </div>
+
+
+                    <div class="weather-summary">
+
+                        <div>
+
+                            <span>Rainfall</span>
+
+                            <strong id="rainfall">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <span>Temperature</span>
+
+                            <strong id="temperature">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <span>Humidity</span>
+
+                            <strong id="humidity">
+                                —
+                            </strong>
+
+                        </div>
+
+                        <div>
+
+                            <span>Crop Risk</span>
+
+                            <strong id="crop-risk">
+                                —
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+
+                <!-- News -->
+
+                <article class="panel-card">
+
+                    <div class="panel-header">
+
+                        <div>
+
+                            <span class="panel-label">
+                                NEWS & EVENTS
+                            </span>
+
+                            <h3>
+                                Market Intelligence
+                            </h3>
+
+                        </div>
+
+                        <span>
+                            ◌
+                        </span>
+
+                    </div>
+
+
+                    <div
+                        class="news-summary"
+                        id="news-summary"
+                    >
+
+                        <span>
+                            Loading latest market events...
+                        </span>
+
+                    </div>
+
+                </article>
+
+            </div>
+
+        </section>
+
+
+        <!-- ================= AI ANALYST ================= -->
+
+        <section class="section">
+
+            <article class="analyst-card">
+
+                <div class="analyst-header">
+
+                    <div class="analyst-icon">
+                        AI
+                    </div>
+
+                    <div>
+
+                        <span class="panel-label">
+                            COCOA AI ANALYST
+                        </span>
+
+                        <h3>
+                            Market Intelligence Summary
+                        </h3>
+
+                    </div>
+
+                </div>
+
+
+                <div
+                    class="analyst-text"
+                    id="ai-analysis"
+                >
+
+                    The intelligence engine is preparing the latest
+                    market assessment.
+
+                </div>
+
+
+                <div class="analyst-footer">
+
+                    <span>
+                        Evidence-based analysis
+                    </span>
+
+                    <span>
+                        Model status: Experimental
+                    </span>
+
+
+
+</div>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
