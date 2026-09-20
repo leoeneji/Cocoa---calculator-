@@ -10,4 +10,5 @@ numpy
 scikit-learn
 xgboost
 statsmodels
-yfinancestreamlit
+yfinance
+streamlit
