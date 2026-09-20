@@ -12,3 +12,5 @@ xgboost
 statsmodels
 yfinance
 streamlit
+streamlit
+psycopg[binary]
