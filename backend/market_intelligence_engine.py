@@ -4,21 +4,18 @@ MARKET INTELLIGENCE ENGINE
 
 Purpose
 -------
-Combine validated model output with current observable market context:
+Combines validated model output with current observable market context:
 
     price + FX + weather + news + signal/risk evidence
                          ↓
                  MARKET INTELLIGENCE
 
-This layer explains the current intelligence state. It does not:
-- retrain models,
-- invent missing observations,
-- convert weak evidence into certainty,
-- create a guaranteed price prediction,
-- replace the model validation layer.
+Also exposes an estimated Nigerian cocoa benchmark in NGN/tonne.
 
-All context is point-in-time: only observations available at or before
-the latest canonical ICCO-DAILY-USD observation are considered.
+The Nigerian benchmark is derived from:
+    ICCO USD/tonne × USD/NGN
+
+It is a benchmark, not a guaranteed farm-gate or physical-market price.
 """
 
 from __future__ import annotations
@@ -26,16 +23,18 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import asdict, dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from typing import Any, Optional
-from dotenv import load_dotenv
+
 import psycopg2
+from dotenv import load_dotenv
+
+from backend.nigeria_price_engine import estimate_ngn_price, forecast_ngn_price
+
 load_dotenv()
 
 TARGET = "ICCO-DAILY-USD"
 UNIT = "USD/tonne"
-
-# Context windows are deliberately modest and transparent.
 NEWS_WINDOW_DAYS = 7
 WEATHER_WINDOW_DAYS = 7
 
@@ -45,20 +44,18 @@ def safe_float(value: Any, default: Optional[float] = None) -> Optional[float]:
         number = float(value)
     except (TypeError, ValueError):
         return default
-
-    return number if number == number and abs(number) != float("inf") else default
+    if number != number or abs(number) == float("inf"):
+        return default
+    return number
 
 
 def parse_date(value: Any) -> Optional[date]:
     if value is None:
         return None
-
     if isinstance(value, datetime):
         return value.date()
-
     if isinstance(value, date):
         return value
-
     text = str(value)
     try:
         return datetime.fromisoformat(text.replace("Z", "+00:00")).date()
@@ -84,68 +81,50 @@ class IntelligenceResult:
     target: str
     observation_date: str
     latest_price: float
-
     signal: str
     direction: str
     confidence_index: float
     risk_level: str
     model_agreement: str
-
     forecast_price: Optional[float]
     expected_change_pct: Optional[float]
     forecast_low: Optional[float]
     forecast_high: Optional[float]
-
     fx_context: dict[str, Any]
     weather_context: dict[str, Any]
     news_context: dict[str, Any]
-
     market_state: str
     intelligence_state: str
     drivers: list[str]
     cautions: list[str]
     models: list[dict[str, Any]]
-
     data_integrity: dict[str, bool]
+    nigeria_price_ngn: Optional[float] = None
+    nigeria_forecast_ngn: Optional[float] = None
 
 
 def load_latest_target(cur) -> tuple[date, float]:
     cur.execute(
         """
-        SELECT
-            timestamp::date AS trade_date,
-            price
+        SELECT timestamp::date AS trade_date, price
         FROM market_prices
-        WHERE contract = %s
-          AND price IS NOT NULL
+        WHERE contract = %s AND price IS NOT NULL
         ORDER BY timestamp DESC
         LIMIT 1
         """,
         (TARGET,),
     )
     row = cur.fetchone()
-
     if not row:
-        raise RuntimeError(
-            f"No observations found for canonical target {TARGET}."
-        )
-
+        raise RuntimeError(f"No observations found for canonical target {TARGET}.")
     trade_date, price = row
     price_value = safe_float(price)
-
     if price_value is None:
         raise RuntimeError("Latest canonical target price is invalid.")
-
     return trade_date, price_value
 
 
 def load_fx_context(cur, as_of: date) -> dict[str, Any]:
-    """
-    Retrieve the latest available FX observation for each requested pair
-    at or before the canonical cocoa observation date.
-
-    We use the existing fx_rates table rather than inventing rates.
-    """
     pairs = [
         ("USD", "NGN"),
         ("EUR", "NGN"),
@@ -154,9 +133,7 @@ def load_fx_context(cur, as_of: date) -> dict[str, Any]:
         ("USD", "XAF"),
         ("EUR", "XAF"),
     ]
-
     result: dict[str, Any] = {}
-
     for base, quote in pairs:
         cur.execute(
             """
@@ -171,23 +148,17 @@ def load_fx_context(cur, as_of: date) -> dict[str, Any]:
             (base, quote, as_of),
         )
         row = cur.fetchone()
-
         key = f"{base}_{quote}"
-
         if not row:
             result[key] = None
             continue
-
         rate, rate_date, source = row
-
         result[key] = {
             "rate": safe_float(rate),
             "date": str(rate_date),
             "source": source,
         }
-
     available = sum(value is not None for value in result.values())
-
     return {
         "available_pairs": available,
         "requested_pairs": len(pairs),
@@ -196,38 +167,18 @@ def load_fx_context(cur, as_of: date) -> dict[str, Any]:
 
 
 def load_weather_context(cur, as_of: date) -> dict[str, Any]:
-    """
-    Summarise recent weather observations without using future data.
-
-    weather_observations contains:
-      location, observation_date, rainfall_mm,
-      temperature_c, humidity_pct, weather_anomaly,
-      crop_risk_score, source
-    """
+    window_start = as_of.fromordinal(max(1, as_of.toordinal() - WEATHER_WINDOW_DAYS))
     cur.execute(
         """
-        SELECT
-            location,
-            observation_date,
-            rainfall_mm,
-            temperature_c,
-            humidity_pct,
-            weather_anomaly,
-            crop_risk_score,
-            source
+        SELECT location, observation_date, rainfall_mm, temperature_c,
+               humidity_pct, weather_anomaly, crop_risk_score, source
         FROM weather_observations
-        WHERE observation_date <= %s
-          AND observation_date >= %s
+        WHERE observation_date <= %s AND observation_date >= %s
         ORDER BY observation_date DESC
         """,
-        (
-            as_of,
-            as_of.fromordinal(max(1, as_of.toordinal() - WEATHER_WINDOW_DAYS)),
-        ),
+        (as_of, window_start),
     )
-
     rows = cur.fetchall()
-
     if not rows:
         return {
             "available": False,
@@ -240,12 +191,12 @@ def load_weather_context(cur, as_of: date) -> dict[str, Any]:
             "average_weather_anomaly": None,
         }
 
-    rainfall = []
-    temperature = []
-    humidity = []
-    crop_risk = []
-    anomaly = []
-    locations = set()
+    rainfall: list[float] = []
+    temperature: list[float] = []
+    humidity: list[float] = []
+    crop_risk: list[float] = []
+    anomaly: list[float] = []
+    locations: set[str] = set()
 
     for (
         location,
@@ -259,7 +210,6 @@ def load_weather_context(cur, as_of: date) -> dict[str, Any]:
     ) in rows:
         if location:
             locations.add(str(location))
-
         for collection, value in (
             (rainfall, rainfall_mm),
             (temperature, temperature_c),
@@ -271,9 +221,10 @@ def load_weather_context(cur, as_of: date) -> dict[str, Any]:
             if number is not None:
                 collection.append(number)
 
-    average = lambda values: (
-        round(sum(values) / len(values), 2) if values else None
-    )
+    def average(values: list[float]) -> Optional[float]:
+        if not values:
+            return None
+        return round(sum(values) / len(values), 2)
 
     return {
         "available": True,
@@ -288,30 +239,16 @@ def load_weather_context(cur, as_of: date) -> dict[str, Any]:
 
 
 def load_news_context(cur, as_of: date) -> dict[str, Any]:
-    """
-    Count recent articles that were already stored in the articles table.
-
-    Sentiment is reported only when an actual sentiment field exists.
-    This function never manufactures sentiment.
-    """
-    window_start = as_of.fromordinal(
-        max(1, as_of.toordinal() - NEWS_WINDOW_DAYS)
-    )
-
+    window_start = as_of.fromordinal(max(1, as_of.toordinal() - NEWS_WINDOW_DAYS))
     cur.execute(
         """
-        SELECT
-            COUNT(*)
+        SELECT COUNT(*)
         FROM articles
-        WHERE published_at::date <= %s
-          AND published_at::date >= %s
+        WHERE published_at::date <= %s AND published_at::date >= %s
         """,
         (as_of, window_start),
     )
     article_count = int(cur.fetchone()[0] or 0)
-
-    # The current articles schema does not expose a sentiment column.
-    # Keep the interface explicit instead of fabricating sentiment.
     return {
         "available": article_count > 0,
         "article_count": article_count,
@@ -325,12 +262,8 @@ def load_signal_context() -> dict[str, Any]:
     try:
         from backend.signal_engine import build_signal
     except Exception as exc:
-        raise RuntimeError(
-            "Could not import backend.signal_engine."
-        ) from exc
-
-    result = build_signal("30")
-    return asdict(result)
+        raise RuntimeError("Could not import backend.signal_engine.") from exc
+    return asdict(build_signal("30"))
 
 
 def classify_market_state(
@@ -340,19 +273,14 @@ def classify_market_state(
 ) -> str:
     if expected_change_pct is None:
         return "UNKNOWN"
-
     if agreement == "MODEL_DISAGREEMENT":
         return "MIXED"
-
     if direction == "BULLISH":
         return "BULLISH"
-
     if direction == "BEARISH":
         return "BEARISH"
-
     if direction == "NEUTRAL":
         return "NEUTRAL"
-
     return "UNKNOWN"
 
 
@@ -364,25 +292,18 @@ def build_drivers(
 ) -> tuple[list[str], list[str]]:
     drivers: list[str] = []
     cautions: list[str] = []
-
-    direction = signal.get("direction", "UNKNOWN")
-    agreement = signal.get("agreement", "UNKNOWN")
+    direction = str(signal.get("direction", "UNKNOWN")).upper()
+    agreement = str(signal.get("agreement", "UNKNOWN")).upper()
     expected_change = safe_float(signal.get("expected_change_pct"))
 
     if direction in {"BULLISH", "BEARISH", "NEUTRAL"}:
         drivers.append(
             f"Validated ensemble direction is {direction} for the 30-trading-day horizon."
         )
-
     if expected_change is not None:
-        drivers.append(
-            f"Ensemble expected change is {expected_change:+.2f}%."
-        )
-
+        drivers.append(f"Ensemble expected change is {expected_change:+.2f}%.")
     if agreement == "MODEL_DISAGREEMENT":
-        cautions.append(
-            "Models disagree on the 30-trading-day forecast."
-        )
+        cautions.append("Models disagree on the 30-trading-day forecast.")
 
     confidence = safe_float(signal.get("confidence_index"))
     if confidence is not None and confidence < 65.0:
@@ -390,14 +311,16 @@ def build_drivers(
             f"Evidence confidence index is {confidence:.2f}/100, below the action threshold."
         )
 
-    if signal.get("risk_level") == "HIGH":
+    if str(signal.get("risk_level", "")).upper() == "HIGH":
         cautions.append("Current risk classification is HIGH.")
 
-    if fx.get("available_pairs", 0) == 0:
+    available_pairs = int(fx.get("available_pairs", 0))
+    requested_pairs = int(fx.get("requested_pairs", 0))
+    if available_pairs == 0:
         cautions.append("No usable FX context was available at the observation date.")
     else:
         drivers.append(
-            f"FX context available for {fx['available_pairs']}/{fx['requested_pairs']} requested pairs."
+            f"FX context available for {available_pairs}/{requested_pairs} requested pairs."
         )
 
     if weather.get("available"):
@@ -409,19 +332,46 @@ def build_drivers(
     else:
         cautions.append("No recent weather observations were available.")
 
-    if news.get("article_count", 0) > 0:
+    article_count = int(news.get("article_count", 0))
+    if article_count > 0:
         drivers.append(
-            f"{news['article_count']} stored article(s) fall within the recent {NEWS_WINDOW_DAYS}-day window."
+            f"{article_count} stored article(s) fall within the recent {NEWS_WINDOW_DAYS}-day window."
         )
     else:
         cautions.append("No stored articles were available in the recent news window.")
 
     if not news.get("sentiment_available"):
-        cautions.append(
-            "News sentiment is not scored; no sentiment value is inferred."
-        )
+        cautions.append("News sentiment is not scored; no sentiment value is inferred.")
 
     return drivers, cautions
+
+
+def calculate_nigeria_benchmark(
+    latest_price: Optional[float],
+    expected_change: Optional[float],
+    fx: dict[str, Any],
+) -> tuple[Optional[float], Optional[float]]:
+    try:
+        usd_ngn_data = fx.get("pairs", {}).get("USD_NGN")
+        if not usd_ngn_data:
+            return None, None
+
+        usd_ngn = safe_float(usd_ngn_data.get("rate"))
+        if usd_ngn is None or latest_price is None:
+            return None, None
+
+        nigeria_price_ngn = estimate_ngn_price(latest_price, usd_ngn)
+        nigeria_forecast_ngn = None
+        if expected_change is not None:
+            nigeria_forecast_ngn = forecast_ngn_price(
+                nigeria_price_ngn,
+                expected_change,
+            )
+
+        return nigeria_price_ngn, nigeria_forecast_ngn
+
+    except (AttributeError, TypeError, ValueError, ArithmeticError):
+        return None, None
 
 
 def build_intelligence() -> IntelligenceResult:
@@ -430,9 +380,6 @@ def build_intelligence() -> IntelligenceResult:
     with get_connection() as conn:
         with conn.cursor() as cur:
             observation_date, latest_price = load_latest_target(cur)
-
-            # Prevent accidental mixing of a newer DB target with an older
-            # model context.
             signal_date = parse_date(signal.get("latest_date"))
 
             if signal_date is None:
@@ -461,8 +408,7 @@ def build_intelligence() -> IntelligenceResult:
         agreement,
     )
 
-    # Intelligence state is descriptive, not a trading recommendation.
-    if signal.get("risk_level") == "HIGH":
+    if str(signal.get("risk_level", "")).upper() == "HIGH":
         intelligence_state = "CAUTION"
     elif agreement == "MODEL_DISAGREEMENT":
         intelligence_state = "MIXED_EVIDENCE"
@@ -470,6 +416,12 @@ def build_intelligence() -> IntelligenceResult:
         intelligence_state = "ACTIONABLE_EVIDENCE"
     else:
         intelligence_state = "WATCH"
+
+    nigeria_price_ngn, nigeria_forecast_ngn = calculate_nigeria_benchmark(
+        latest_price=latest_price,
+        expected_change=expected_change,
+        fx=fx,
+    )
 
     return IntelligenceResult(
         target=TARGET,
@@ -485,7 +437,9 @@ def build_intelligence() -> IntelligenceResult:
         model_agreement=agreement,
         forecast_price=safe_float(signal.get("forecast_price")),
         expected_change_pct=(
-            round(expected_change, 2) if expected_change is not None else None
+            round(expected_change, 2)
+            if expected_change is not None
+            else None
         ),
         forecast_low=safe_float(signal.get("range_low")),
         forecast_high=safe_float(signal.get("range_high")),
@@ -504,7 +458,10 @@ def build_intelligence() -> IntelligenceResult:
             "random_shuffling": False,
             "future_leakage": False,
             "sentiment_fabricated": False,
+            "nigeria_benchmark_derived_from_fx": nigeria_price_ngn is not None,
         },
+        nigeria_price_ngn=nigeria_price_ngn,
+        nigeria_forecast_ngn=nigeria_forecast_ngn,
     )
 
 
@@ -523,13 +480,33 @@ def main() -> None:
     print(f"Market state: {result.market_state}")
     print(f"Intelligence state: {result.intelligence_state}")
 
+    print("\n=== NIGERIAN COCOA BENCHMARK ===")
+    if result.nigeria_price_ngn is not None:
+        print(
+            f"Estimated Nigerian benchmark: "
+            f"₦{result.nigeria_price_ngn:,.2f}/tonne"
+        )
+    else:
+        print("Estimated Nigerian benchmark: unavailable")
+
+    if result.nigeria_forecast_ngn is not None:
+        print(
+            f"Nigerian benchmark forecast: "
+            f"₦{result.nigeria_forecast_ngn:,.2f}/tonne"
+        )
+    else:
+        print("Nigerian benchmark forecast: unavailable")
+
     print("\n=== FORECAST / SIGNAL ===")
     print(f"Signal: {result.signal}")
     print(f"Direction: {result.direction}")
     print(f"Forecast: {result.forecast_price}")
-    print(f"Expected change: {result.expected_change_pct:+.2f}%"
-          if result.expected_change_pct is not None
-          else "Expected change: unavailable")
+
+    if result.expected_change_pct is not None:
+        print(f"Expected change: {result.expected_change_pct:+.2f}%")
+    else:
+        print("Expected change: unavailable")
+
     print(f"Confidence index: {result.confidence_index:.2f}/100")
     print(f"Risk level: {result.risk_level}")
     print(f"Model agreement: {result.model_agreement}")
@@ -540,8 +517,7 @@ def main() -> None:
 
     print("\n=== FX CONTEXT ===")
     print(
-        f"Available pairs: "
-        f"{result.fx_context['available_pairs']}/"
+        f"Available pairs: {result.fx_context['available_pairs']}/"
         f"{result.fx_context['requested_pairs']}"
     )
     for pair, value in result.fx_context["pairs"].items():
@@ -571,7 +547,6 @@ def main() -> None:
 
     print("\nMACHINE-READABLE RESULT:")
     print(json.dumps(asdict(result), indent=2, default=str))
-
     print("=" * 70)
 
 

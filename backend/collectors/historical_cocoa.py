@@ -216,6 +216,88 @@ def parse_ajax_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def fetch_latest_homepage_row() -> dict[str, Any] | None:
+    """Fetch the newest official ICCO daily row from all homepage tables."""
+    latest_row = None
+
+    try:
+        response = SESSION.get(
+            "https://www.icco.org/",
+            headers=HEADERS,
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        for table in soup.find_all("table"):
+            headers = [
+                cell.get_text(" ", strip=True).lower()
+                for cell in table.find_all("th")
+            ]
+
+            if not any("date" in h for h in headers):
+                continue
+            if not any("icco daily price (us$/tonne)" in h for h in headers):
+                continue
+
+            try:
+                date_idx = next(i for i, h in enumerate(headers) if "date" in h)
+                london_idx = next(i for i, h in enumerate(headers) if "london futures" in h)
+                ny_idx = next(i for i, h in enumerate(headers) if "new york futures" in h)
+                usd_idx = next(i for i, h in enumerate(headers) if "icco daily price (us$/tonne)" in h)
+                eur_idx = next(i for i, h in enumerate(headers) if "icco daily price (euro/tonne)" in h)
+            except StopIteration:
+                continue
+
+            for tr in table.find_all("tr"):
+                cells = [
+                    cell.get_text(" ", strip=True)
+                    for cell in tr.find_all("td")
+                ]
+
+                if len(cells) <= max(date_idx, london_idx, ny_idx, usd_idx, eur_idx):
+                    continue
+
+                date_value = parse_date(cells[date_idx])
+                if date_value is None:
+                    continue
+
+                row = {
+                    "wdt_id": cells[0] if cells else None,
+                    "date": date_value,
+                    "london_futures": parse_price(cells[london_idx]),
+                    "new_york_futures": parse_price(cells[ny_idx]),
+                    "icco_daily_usd": parse_price(cells[usd_idx]),
+                    "icco_daily_eur": parse_price(cells[eur_idx]),
+                }
+
+                if not any(
+                    row[k] is not None
+                    for k in (
+                        "london_futures",
+                        "new_york_futures",
+                        "icco_daily_usd",
+                        "icco_daily_eur",
+                    )
+                ):
+                    continue
+
+                if latest_row is None or row["date"] > latest_row["date"]:
+                    latest_row = row
+
+        if latest_row:
+            print(
+                f"ICCO HOMEPAGE LATEST: "
+                f"{latest_row['date']} | USD {latest_row['icco_daily_usd']}"
+            )
+
+    except Exception as exc:
+        print(f"WARNING: ICCO homepage latest-row fetch failed: {exc}")
+
+    return latest_row
+
+
 def collect_all_rows(html: str) -> list[dict[str, Any]]:
     table_id = find_table_id(html)
     print(f"ICCO TABLE ID: {table_id}")
@@ -245,6 +327,17 @@ def collect_all_rows(html: str) -> list[dict[str, Any]]:
     result = sorted(unique.values(), key=lambda r: r["date"])
     if total and len(result) < total:
         print(f"WARNING: ICCO reported {total}, collected {len(result)} unique dates")
+
+    # ICCO homepage can expose a newer official daily row before the
+    # historical AJAX statistics table is updated.
+    latest = fetch_latest_homepage_row()
+    if latest:
+        merged = {row["date"]: row for row in result}
+        merged[latest["date"]] = latest
+        result = sorted(merged.values(), key=lambda r: r["date"], reverse=True)
+        print(f"TOTAL AFTER HOMEPAGE SYNC: {len(result)}")
+        print(f"LATEST ICCO DATE: {result[0]['date']}")
+
     return result
 
 

@@ -609,150 +609,529 @@ async function loadSignals() {
 async function loadMarketIntelligence() {
     try {
         const data = await fetchJSON("/market-intelligence");
+
         console.log("MARKET INTELLIGENCE:", data);
 
-        const intelligence = unwrapObject(
-            data,
-            ["intelligence", "market_intelligence", "data"]
+        const intelligence = unwrapObject(data, [
+            "intelligence",
+            "market_intelligence",
+            "data",
+        ]);
+
+        setText(
+            "intelligence-state",
+            firstDefined(
+                intelligence.intelligence_state,
+                intelligence.state
+            )
         );
 
-        // Main forecast/intelligence fields
-        setText("intelligence-state",
-            firstDefined(intelligence.intelligence_state, intelligence.state, "—"));
-        setText("market-state",
-            firstDefined(intelligence.market_state, intelligence.market, "—"));
-        setText("intelligence-signal",
-            firstDefined(intelligence.signal, intelligence.market_signal, "—"));
-        setText("intelligence-direction",
-            firstDefined(
-                intelligence.direction,
-                intelligence.market_direction,
-                intelligence.ensemble_direction,
-                "—"
-            ));
-
-        setText("intelligence-price",
-            intelligence.latest_price !== undefined
-                ? formatNumber(intelligence.latest_price) : "—");
-        setText("forecast-price",
-            intelligence.forecast_price !== undefined
-                ? formatNumber(intelligence.forecast_price) : "—");
-        setText("forecast-change",
-            intelligence.expected_change_pct !== undefined
-                ? formatPercent(intelligence.expected_change_pct) : "—");
-        setText("forecast-low",
-            intelligence.forecast_low !== undefined
-                ? formatNumber(intelligence.forecast_low) : "—");
-        setText("forecast-high",
-            intelligence.forecast_high !== undefined
-                ? formatNumber(intelligence.forecast_high) : "—");
-        setText("intelligence-confidence",
-            intelligence.confidence_index !== undefined
-                ? `${formatNumber(intelligence.confidence_index, 0)}/100` : "—");
-        setText("intelligence-risk",
-            firstDefined(intelligence.risk_level, intelligence.risk, "—"));
-        setText("model-agreement",
-            firstDefined(intelligence.model_agreement, intelligence.agreement, "—"));
-
-        // Visible signal/regime fields
-        setText("current-signal",
-            firstDefined(
-                intelligence.signal,
-                intelligence.market_signal,
-                intelligence.ensemble_direction,
-                "—"
-            ));
-        setText("signal-confidence",
-            intelligence.confidence_index !== undefined
-                ? `${formatNumber(intelligence.confidence_index, 0)}/100` : "—");
-        setText("signal-severity",
-            firstDefined(
-                intelligence.severity,
-                intelligence.risk_level,
-                intelligence.risk,
-                "—"
-            ));
-        setText("regime-state",
+        setText(
+            "market-state",
             firstDefined(
                 intelligence.market_state,
-                intelligence.market,
-                intelligence.intelligence_state,
-                "—"
-            ));
-        setText("regime-risk",
-            firstDefined(intelligence.risk_level, intelligence.risk, "—"));
+                intelligence.market
+            )
+        );
 
-        // Individual model forecasts
-        const models = Array.isArray(intelligence.models)
-            ? intelligence.models : [];
+        setText(
+            "intelligence-signal",
+            firstDefined(
+                intelligence.signal,
+                intelligence.market_signal
+            )
+        );
 
-        function modelForecast(...names) {
-            const wanted = names.map(name =>
-                String(name).toLowerCase().replace(/[^a-z0-9]/g, "")
+        setText(
+            "intelligence-direction",
+            firstDefined(
+                intelligence.direction,
+                intelligence.market_direction
+            )
+        );
+
+        if (intelligence.latest_price !== undefined) {
+            setText(
+                "intelligence-price",
+                formatNumber(intelligence.latest_price)
             );
-            const match = models.find(model => {
-                if (!model || model.model === undefined) return false;
-                const actual = String(model.model)
-                    .toLowerCase().replace(/[^a-z0-9]/g, "");
-                return wanted.includes(actual);
-            });
-            return match && match.forecast !== undefined
-                ? formatNumber(match.forecast) : "—";
         }
 
-        setText("xgb-forecast", modelForecast("xgboost", "xgb"));
-        setText("rf-forecast",
-            modelForecast("random forest", "random_forest", "randomforest", "rf"));
-        setText("ts-forecast",
-            modelForecast("time-series", "time_series", "timeseries", "time series"));
-        setText("model-ensemble",
+        if (intelligence.forecast_price !== undefined) {
+            setText(
+                "forecast-price",
+                formatNumber(intelligence.forecast_price)
+            );
+        }
+
+        if (intelligence.expected_change_pct !== undefined) {
+            setText(
+                "forecast-change",
+                formatPercent(intelligence.expected_change_pct)
+            );
+        }
+
+        if (intelligence.forecast_low !== undefined) {
+            setText(
+                "forecast-low",
+                formatNumber(intelligence.forecast_low)
+            );
+        }
+
+        if (intelligence.forecast_high !== undefined) {
+            setText(
+                "forecast-high",
+                formatNumber(intelligence.forecast_high)
+            );
+        }
+
+        if (intelligence.confidence_index !== undefined) {
+            setText(
+                "intelligence-confidence",
+                `${formatNumber(
+                    intelligence.confidence_index,
+                    0
+                )}/100`
+            );
+        }
+
+        setText(
+            "intelligence-risk",
+            firstDefined(
+                intelligence.risk_level,
+                intelligence.risk
+            )
+        );
+
+        setText(
+            "model-agreement",
+            firstDefined(
+                intelligence.model_agreement,
+                intelligence.agreement
+            )
+        );
+
+        /* =========================================================
+           INDIVIDUAL MODEL FORECASTS
+           The API returns models as an array. Match model names
+           flexibly so the dashboard works with names such as:
+           XGBoost, Random Forest, Time-Series, Persistence.
+        ========================================================= */
+
+        const models = Array.isArray(intelligence.models)
+            ? intelligence.models
+            : [];
+
+        function modelForecast(...names) {
+            const wanted = names.map(
+                name => String(name).toLowerCase().replace(/[^a-z0-9]/g, "")
+            );
+
+            const match = models.find(model => {
+                if (!model || model.model === undefined) return false;
+
+                const actual = String(model.model)
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]/g, "");
+
+                return wanted.includes(actual);
+            });
+
+            return match && match.forecast !== undefined
+                ? formatNumber(match.forecast)
+                : "—";
+        }
+
+        setText(
+            "xgb-forecast",
+            modelForecast("xgboost", "xgb")
+        );
+
+        setText(
+            "rf-forecast",
+            modelForecast("random forest", "random_forest", "randomforest", "rf")
+        );
+
+        setText(
+            "ts-forecast",
+            modelForecast("time-series", "time_series", "timeseries", "time series")
+        );
+
+        setText(
+            "model-ensemble",
             intelligence.forecast_price !== undefined
-                ? formatNumber(intelligence.forecast_price) : "—");
+                ? formatNumber(intelligence.forecast_price)
+                : "—"
+        );
 
-        // Supporting intelligence
-        renderList("drivers",
-            firstDefined(intelligence.drivers, intelligence.key_drivers));
-        renderList("cautions",
-            firstDefined(
-                intelligence.cautions,
-                intelligence.risks,
-                intelligence.warnings
-            ));
+        renderList(
+            "drivers",
+            intelligence.drivers
+        );
 
-        // Context/status fields
-        const fx = intelligence.fx_context || {};
-        const weather = intelligence.weather_context || {};
-        const news = intelligence.news_context || {};
+        renderList(
+            "cautions",
+            intelligence.cautions
+        );
 
-        setText("fx-status",
-            fx.available !== undefined
-                ? (fx.available ? "Available" : "Unavailable") : "—");
-        setText("weather-status",
-            weather.available !== undefined
-                ? (weather.available ? "Available" : "Unavailable") : "—");
-        setText("news-status",
-            news.available !== undefined
-                ? (news.available ? "Available" : "Unavailable") : "—");
-
-        setText("news-sentiment",
-            firstDefined(intelligence.news_sentiment, intelligence.sentiment, "—"));
-
-        setText("forecast-horizon",
-            firstDefined(intelligence.horizon, intelligence.forecast_horizon,
-                "30-trading-days"));
-        setText("forecast-direction",
-            firstDefined(
-                intelligence.ensemble_direction,
-                intelligence.direction,
-                intelligence.market_direction,
-                "—"
-            ));
-
-        console.log("Market Intelligence UI updated successfully.");
+        return data;
     } catch (error) {
-        console.error("loadMarketIntelligence failed:", error);
+        console.error(
+            "Market intelligence loading failed:",
+            error
+        );
+
+        return null;
     }
 }
+
+/* =============================================================
+   LIST RENDERER
+============================================================= */
+
+function renderList(id, items) {
+    const element = document.getElementById(id);
+
+    if (!element) {
+        return;
+    }
+
+    element.innerHTML = "";
+
+    if (!Array.isArray(items) || items.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "No information available.";
+        element.appendChild(li);
+        return;
+    }
+
+    items.forEach((item) => {
+        const li = document.createElement("li");
+
+        if (typeof item === "object") {
+            li.textContent = JSON.stringify(item);
+        } else {
+            li.textContent = String(item);
+        }
+
+        element.appendChild(li);
+    });
+}
+
+/* =============================================================
+   NAVIGATION
+============================================================= */
+
+/*
+The old navigation used:
+
+    <a href="#" class="nav-item">
+
+That changes nothing when clicked.
+
+This handler gives each navigation item a real destination based
+on its existing href, data-section, data-target, aria-controls,
+or visible text.
+
+It does not require changes to the existing HTML.
+*/
+
+function normaliseSectionName(value) {
+    return String(value || "")
+        .trim()
+        .toLowerCase()
+        .replace(/&/g, "and")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+}
+
+function findNavigationTarget(navItem) {
+    const explicitTarget =
+        navItem.dataset.target ||
+        navItem.dataset.section ||
+        navItem.getAttribute("aria-controls");
+
+    if (explicitTarget) {
+        const cleaned = explicitTarget.replace(/^#/, "");
+        const target = document.getElementById(cleaned);
+
+        if (target) {
+            return target;
+        }
+    }
+
+    const href = navItem.getAttribute("href");
+
+    if (href && href !== "#") {
+        try {
+            if (href.startsWith("#")) {
+                const target = document.getElementById(
+                    href.substring(1)
+                );
+
+                if (target) {
+                    return target;
+                }
+            }
+        } catch (_) {
+            /* Ignore malformed selectors. */
+        }
+    }
+
+    const text = normaliseSectionName(navItem.textContent);
+
+    if (!text) {
+        return null;
+    }
+
+    const candidates = [
+        text,
+        `${text}-section`,
+        `${text}-page`,
+        `section-${text}`,
+    ];
+
+    const aliases = {
+        "market-prices": [
+            "market-prices",
+            "market-prices-section",
+            "prices",
+            "prices-section",
+            "market",
+            "market-section",
+        ],
+        "market-pulse": [
+            "market-pulse",
+            "market-pulse-section",
+            "dashboard",
+            "dashboard-section",
+        ],
+        "market-intelligence": [
+            "market-intelligence",
+            "market-intelligence-section",
+            "intelligence",
+            "intelligence-section",
+        ],
+        "weather": [
+            "weather",
+            "weather-section",
+        ],
+        "signals": [
+            "signals",
+            "signals-section",
+        ],
+        "news": [
+            "news",
+            "news-section",
+        ],
+        "calculator": [
+            "calculator",
+            "calculator-section",
+            "cocoa-calculator",
+        ],
+    };
+
+    const allCandidates = [
+        ...(aliases[text] || []),
+        ...candidates,
+    ];
+
+    for (const id of allCandidates) {
+        const target = document.getElementById(id);
+
+        if (target) {
+            return target;
+        }
+    }
+
+    /* Last fallback: search sections by heading text. */
+    const sections = document.querySelectorAll(
+        "section, [data-section]"
+    );
+
+    for (const section of sections) {
+        const heading = section.querySelector(
+            "h1, h2, h3, h4, .section-title"
+        );
+
+        if (
+            heading &&
+            normaliseSectionName(heading.textContent) === text
+        ) {
+            return section;
+        }
+    }
+
+    return null;
+}
+
+function activateNavigationItem(activeItem) {
+    document
+        .querySelectorAll(".nav-item")
+        .forEach((item) => {
+            item.classList.remove("active");
+            item.setAttribute("aria-current", "false");
+        });
+
+    if (activeItem) {
+        activeItem.classList.add("active");
+        activeItem.setAttribute("aria-current", "page");
+    }
+}
+
+function setupNavigation() {
+    const navItems = document.querySelectorAll(
+        ".nav-item, nav a, [data-nav]"
+    );
+
+    if (!navItems.length) {
+        return;
+    }
+
+    navItems.forEach((item) => {
+        item.addEventListener("click", (event) => {
+            const target = findNavigationTarget(item);
+
+            if (!target) {
+                /*
+                Do not break ordinary external links.
+                Only intercept the old href="#"/empty navigation.
+                */
+                const href = item.getAttribute("href");
+
+                if (!href || href === "#") {
+                    event.preventDefault();
+                }
+
+                return;
+            }
+
+            event.preventDefault();
+
+            activateNavigationItem(item);
+
+            target.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+            });
+
+            if (target.id) {
+                history.replaceState(
+                    null,
+                    "",
+                    `#${target.id}`
+                );
+            }
+        });
+    });
+
+    /* Activate the navigation item matching the current hash. */
+    if (window.location.hash) {
+        const targetId =
+            window.location.hash.substring(1);
+
+        const target =
+            document.getElementById(targetId);
+
+        if (target) {
+            const matchingItem =
+                Array.from(navItems).find(
+                    (item) =>
+                        item.getAttribute("href") ===
+                            `#${targetId}` ||
+                        item.dataset.target === targetId ||
+                        item.dataset.section === targetId ||
+                        item.getAttribute("aria-controls") ===
+                            targetId
+                );
+
+            if (matchingItem) {
+                activateNavigationItem(matchingItem);
+            }
+        }
+    }
+}
+
+/* =============================================================
+   HEALTH CHECK
+============================================================= */
+
+async function loadHealth() {
+    try {
+        const data = await fetchJSON("/health");
+
+        console.log("HEALTH:", data);
+
+        setStatus("Backend connected");
+
+        return data;
+    } catch (error) {
+        console.error("Health check failed:", error);
+
+        setStatus(
+            `Backend unavailable: ${safeErrorMessage(error)}`,
+            true
+        );
+
+        return null;
+    }
+}
+
+/* =============================================================
+   COUNTRIES
+============================================================= */
+
+async function loadCountries() {
+    try {
+        const data = await fetchJSON("/countries");
+
+        console.log("COUNTRIES:", data);
+
+        const rows = unwrapArray(data, [
+            "countries",
+            "data",
+            "results",
+        ]);
+
+        const container =
+            document.getElementById("countries");
+
+        if (!container) {
+            return rows;
+        }
+
+        container.innerHTML = "";
+
+        rows.forEach((country) => {
+            const item = document.createElement("div");
+
+            if (typeof country === "object") {
+                item.textContent = firstDefined(
+                    country.name,
+                    country.country,
+                    country.code
+                ) || "—";
+            } else {
+                item.textContent = String(country);
+            }
+
+            container.appendChild(item);
+        });
+
+        return rows;
+    } catch (error) {
+        console.error(
+            "Countries loading failed:",
+            error
+        );
+
+        return [];
+    }
+}
+
+/* =============================================================
+   NEWS
+============================================================= */
 
 async function loadNews() {
     try {

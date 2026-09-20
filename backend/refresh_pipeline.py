@@ -41,14 +41,26 @@ def main() -> None:
     )
 
     run(
-        "STEP 2 — REBUILD DYNAMIC MODEL ENSEMBLE",
+        "STEP 2 — REFRESH HISTORICAL FX / NGN DATA",
+        "-m",
+ "backend.collectors.historical_fx",
+    )
+
+    run(
+        "STEP 3 — REFRESH LIVE WEATHER DATA",
+        "-m",
+ "backend.collectors.weather",
+    )
+
+    run(
+        "STEP 4 — REBUILD DYNAMIC MODEL ENSEMBLE",
         "-m",
         "backend.model_ensemble",
     )
 
     print("\n" + "=" * 70)
     print("COCOA INTELLIGENCE HUB AUTOMATIC REFRESH: PASSED")
-    print("Database, model forecasts, and ensemble are refreshed.")
+    print("ICCO, FX, weather, database, model forecasts, and ensemble are refreshed.")
     print("=" * 70)
 
 if __name__ == "__main__":

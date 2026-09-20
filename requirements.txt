@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+psycopg2-binary
+python-dotenv
+requests
+beautifulsoup4
+lxml
+pandas
+numpy
+scikit-learn
+xgboost
+statsmodels
+yfinancestreamlit

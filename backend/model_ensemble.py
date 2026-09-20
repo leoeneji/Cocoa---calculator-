@@ -13,12 +13,18 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from math import isfinite
+from pathlib import Path
 from typing import Dict, Optional
+
+from dotenv import load_dotenv
 
 from backend import time_series_model as ts
 from backend.ml import xgboost_model as xgb
 from backend.ml import random_forest_model as rf
 
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(PROJECT_ROOT / ".env")
 
 TARGET = "ICCO-DAILY-USD"
 UNIT = "USD/tonne"
@@ -60,14 +66,14 @@ def calculate_weights(metrics: Dict[str, Optional[dict]]) -> Dict[str, float]:
     }
     total = sum(inverse.values())
 
-    return {
-        name: (value / total if name in inverse else 0.0)
-        for name, value in inverse.items()
-    } | {
-        name: 0.0
-        for name in metrics
-        if name not in inverse
-    }
+    if total <= 0:
+        return {name: 0.0 for name in metrics}
+
+    weights = {name: 0.0 for name in metrics}
+    for name, value in inverse.items():
+        weights[name] = value / total
+
+    return weights
 
 
 def weighted_forecast(
@@ -147,16 +153,79 @@ def forecast_range(forecasts: Dict[str, float]) -> Optional[dict]:
     }
 
 
+def _date_value(value):
+    return value.date() if hasattr(value, "date") else value
+
+
+def _assert_current_data_alignment(
+    xdf,
+    rdf,
+    tdf,
+) -> tuple[object, float]:
+    """
+    Require every model input to end on the same latest ICCO observation.
+
+    This prevents a newer database price from being combined with a stale
+    model dataset.
+    """
+    x_latest_date = _date_value(xdf["trade_date"].iloc[-1])
+    r_latest_date = _date_value(rdf["trade_date"].iloc[-1])
+    t_latest_date = _date_value(tdf["trade_date"].iloc[-1])
+
+    dates = {
+        "xgboost": x_latest_date,
+        "random_forest": r_latest_date,
+        "time_series": t_latest_date,
+    }
+
+    if len(set(dates.values())) != 1:
+        raise RuntimeError(
+            "Model input dates are not aligned with the latest ICCO observation: "
+            + ", ".join(f"{name}={date}" for name, date in dates.items())
+        )
+
+    x_latest_price = float(
+        xdf.loc[xdf["trade_date"].eq(xdf["trade_date"].iloc[-1]), TARGET].iloc[-1]
+    )
+    r_latest_price = float(
+        rdf.loc[rdf["trade_date"].eq(rdf["trade_date"].iloc[-1]), TARGET].iloc[-1]
+    )
+    t_latest_price = float(tdf["price"].iloc[-1])
+
+    prices = {
+        "xgboost": x_latest_price,
+        "random_forest": r_latest_price,
+        "time_series": t_latest_price,
+    }
+
+    if max(prices.values()) - min(prices.values()) > 1e-6:
+        raise RuntimeError(
+            "Model input prices are not aligned for "
+            f"{dates['time_series']}: "
+            + ", ".join(f"{name}={price:.2f}" for name, price in prices.items())
+        )
+
+    return t_latest_date, t_latest_price
+
+
 def _model_outputs():
     """
     Rebuild all four current model outputs from the current database.
 
-    This is deliberately done at runtime so a newly collected ICCO
-    observation automatically flows into every model and the ensemble.
+    A fresh dataset is built on every call. No current price, forecast, or
+    model date is stored as a module constant.
     """
 
-    # XGBoost
+    # Build all source datasets from PostgreSQL at runtime.
     xdf = xgb.build_forecasting_dataset()
+    rdf = rf.build_forecasting_dataset()
+    tdf = ts.load_target()
+
+    latest_date, latest_price = _assert_current_data_alignment(
+        xdf, rdf, tdf
+    )
+
+    # XGBoost
     xv = xgb.validate_dataset(xdf)
     x_features = xv["features"]
 
@@ -173,7 +242,6 @@ def _model_outputs():
         x_forecast[horizon] = forecast
 
     # Random Forest
-    rdf = rf.build_forecasting_dataset()
     rv = rf.validate_dataset(rdf)
     r_features = rv["features"]
 
@@ -190,7 +258,6 @@ def _model_outputs():
         r_forecast[horizon] = forecast
 
     # Time-series
-    tdf = ts.load_target()
     t_eval = {}
     t_forecast = {}
     for horizon in HORIZONS:
@@ -199,15 +266,9 @@ def _model_outputs():
         t_eval[horizon] = evaluation
         t_forecast[horizon] = forecast
 
-    latest_date = tdf["trade_date"].iloc[-1].date()
-    latest_price = float(tdf["price"].iloc[-1])
-
     return {
         "latest_date": latest_date,
         "latest_price": latest_price,
-        "xgb": xgb,
-        "rf": rf,
-        "ts": ts,
         "x_eval": x_eval,
         "r_eval": r_eval,
         "t_eval": t_eval,

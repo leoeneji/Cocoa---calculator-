@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import requests
 import pandas as pd
@@ -6,8 +7,9 @@ import pandas as pd
 # COCOA INTELLIGENCE HUB — STREAMLIT COMMAND CENTER
 # ============================================================
 
-API_BASE = "http://127.0.0.1:8000"
+API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
 
+# IMPORTANT: This must be the FIRST Streamlit command in the file.
 st.set_page_config(
     page_title="Cocoa Intelligence Hub",
     page_icon="🍫",
@@ -15,168 +17,144 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ---------- Premium UI ----------
-st.markdown("""
+# ============================================================
+# COCOA THEME
+# ============================================================
+
+st.markdown(
+    """
 <style>
-    /* Page */
-    .stApp {
-        background:
-            radial-gradient(circle at 10% 0%, rgba(126, 86, 48, .13), transparent 30%),
-            radial-gradient(circle at 100% 0%, rgba(35, 94, 76, .10), transparent 28%),
-            #f5f6f3;
-    }
+/* Main application */
+.stApp {
+    background: #f7f1e8;
+    color: #241812;
+}
 
-    .block-container {
-        max-width: 1450px;
-        padding-top: 2rem;
-        padding-bottom: 4rem;
-    }
+/* General text */
+.stApp, .stApp p, .stApp label, .stApp span {
+    color: #241812;
+}
 
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #18251f 0%, #101713 100%);
-    }
-    [data-testid="stSidebar"] * {
-        color: #eef3ed;
-    }
+/* Hero */
+.hero {
+    background: linear-gradient(135deg, #4a2416 0%, #7a3f22 55%, #b36a2c 100%);
+    color: #ffffff;
+    border-radius: 20px;
+    padding: 1.7rem 2rem;
+    margin-bottom: 1.4rem;
+    border: 1px solid #6b351f;
+    box-shadow: 0 8px 24px rgba(74, 36, 22, .16);
+}
+.hero * {
+    color: #ffffff !important;
+}
+.hero-title {
+    font-size: 2.1rem;
+    font-weight: 850;
+}
 
-    /* Typography */
-    h1, h2, h3 {
-        color: #17231d !important;
-        letter-spacing: -0.02em;
-    }
+/* Cards */
+.panel {
+    background: #fffdf9;
+    color: #241812;
+    border: 1px solid #dfcdb9;
+    border-radius: 18px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 4px 14px rgba(74, 36, 22, .06);
+}
+.panel h1, .panel h2, .panel h3, .panel h4, .panel p {
+    color: #241812 !important;
+}
 
-    .hero {
-        padding: 1.7rem 2rem;
-        border-radius: 24px;
-        background: linear-gradient(135deg, #17231d 0%, #274d3e 58%, #6d4a2d 100%);
-        box-shadow: 0 16px 40px rgba(28, 42, 35, .18);
-        margin-bottom: 1.4rem;
-    }
-    .hero-title {
-        color: white !important;
-        font-size: 2.25rem;
-        font-weight: 800;
-        margin: 0;
-    }
-    .hero-sub {
-        color: rgba(255,255,255,.78);
-        font-size: 1rem;
-        margin-top: .35rem;
-    }
+/* Metrics */
+[data-testid="stMetric"] {
+    background: #fffdf9;
+    border: 1px solid #dfcdb9;
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 4px 14px rgba(74, 36, 22, .05);
+}
+[data-testid="stMetricLabel"] {
+    color: #6b4a38 !important;
+    font-weight: 700;
+}
+[data-testid="stMetricValue"] {
+    color: #4a2416 !important;
+    font-weight: 850;
+}
 
-    .section-label {
-        color: #6d4a2d;
-        font-size: .76rem;
-        font-weight: 800;
-        letter-spacing: .14em;
-        text-transform: uppercase;
-        margin: 1.25rem 0 .5rem;
-    }
+/* Section labels */
+.section-label {
+    color: #7a3f22 !important;
+    font-size: .82rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin: 1.2rem 0 .7rem;
+}
 
-    /* Metric cards */
-    [data-testid="stMetric"] {
-        background: rgba(255,255,255,.88);
-        border: 1px solid rgba(23,35,29,.08);
-        border-radius: 18px;
-        padding: 1rem 1.1rem;
-        min-height: 118px;
-        box-shadow: 0 8px 24px rgba(23,35,29,.07);
-    }
-    [data-testid="stMetricLabel"] {
-        color: #647067 !important;
-        font-weight: 650 !important;
-    }
-    [data-testid="stMetricValue"] {
-        color: #17231d !important;
-        font-weight: 800 !important;
-    }
+/* Buttons */
+.stButton > button {
+    background: #7a3f22;
+    color: #ffffff !important;
+    border: 0;
+    border-radius: 12px;
+    font-weight: 750;
+}
+.stButton > button:hover {
+    background: #5f2e1c;
+    color: #ffffff !important;
+}
 
-    /* Cards around columns */
-    .panel {
-        background: rgba(255,255,255,.9);
-        border: 1px solid rgba(23,35,29,.08);
-        border-radius: 20px;
-        padding: 1.25rem;
-        box-shadow: 0 8px 28px rgba(23,35,29,.06);
-    }
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background: #efe2d3;
+}
+section[data-testid="stSidebar"] * {
+    color: #241812 !important;
+}
 
-    .badge {
-        display: inline-block;
-        padding: .35rem .75rem;
-        border-radius: 999px;
-        background: rgba(255,255,255,.13);
-        color: white;
-        font-size: .78rem;
-        font-weight: 700;
-        border: 1px solid rgba(255,255,255,.15);
-    }
+/* Tabs */
+button[data-baseweb="tab"] {
+    color: #5f3a28 !important;
+    font-weight: 700;
+}
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #7a3f22 !important;
+}
 
-    .mini-card {
-        background: #ffffff;
-        border: 1px solid rgba(23,35,29,.08);
-        border-radius: 16px;
-        padding: 1rem;
-        margin-bottom: .7rem;
-        box-shadow: 0 5px 18px rgba(23,35,29,.05);
-    }
+/* Tables */
+[data-testid="stDataFrame"] {
+    border: 1px solid #dfcdb9;
+    border-radius: 12px;
+}
 
-    .mini-title {
-        color: #68736c;
-        font-size: .8rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .05em;
-    }
+/* Hide Streamlit chrome */
+#MainMenu, footer {
+    visibility: hidden;
+}
 
-    .mini-value {
-        color: #17231d;
-        font-size: 1.25rem;
-        font-weight: 800;
-        margin-top: .25rem;
-    }
-
-    /* Tables */
-    [data-testid="stDataFrame"] {
-        border-radius: 16px;
-        overflow: hidden;
-    }
-
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: .35rem;
-        background: #e9ede9;
-        padding: .35rem;
-        border-radius: 14px;
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        padding: .55rem 1rem;
-    }
-    .stTabs [aria-selected="true"] {
-        background: white;
-        box-shadow: 0 3px 12px rgba(23,35,29,.08);
-    }
-
-    /* Buttons */
-    .stButton > button {
-        border-radius: 12px;
-        border: 1px solid rgba(23,35,29,.12);
-        font-weight: 700;
-    }
-
-    /* Hide Streamlit chrome */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+/* Alerts */
+.stAlert {
+    border-radius: 12px;
+}
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
+# ============================================================
+# HELPERS
+# ============================================================
 
-# ---------- Helpers ----------
 @st.cache_data(ttl=300)
 def get_json(endpoint):
     try:
-        response = requests.get(f"{API_BASE}{endpoint}", timeout=15)
+        response = requests.get(
+            f"{API_BASE}{endpoint}",
+            timeout=180,
+        )
         response.raise_for_status()
         return response.json()
     except Exception as exc:
@@ -214,8 +192,13 @@ def model_value(models, names):
         for x in names
     }
     for model in models or []:
-        actual = str(model.get("model", "")).lower()
-        actual = actual.replace("-", "").replace("_", "").replace(" ", "")
+        actual = (
+            str(model.get("model", ""))
+            .lower()
+            .replace("-", "")
+            .replace("_", "")
+            .replace(" ", "")
+        )
         if actual in wanted:
             return model.get("forecast")
     return None
@@ -225,6 +208,9 @@ def rows_from(value):
     if isinstance(value, list):
         return value
     if isinstance(value, dict):
+        for key in ("data", "countries", "prices", "pairs", "items", "rows"):
+            if isinstance(value.get(key), list):
+                return value[key]
         return [value]
     return []
 
@@ -236,43 +222,71 @@ def show_error(label, value):
     return False
 
 
-# ---------- Sidebar ----------
+# ============================================================
+# SIDEBAR
+# ============================================================
+
 with st.sidebar:
     st.markdown("## 🍫 Cocoa Hub")
     st.caption("Market intelligence command center")
     st.divider()
 
-    if st.button("↻  Refresh intelligence", use_container_width=True):
+    if st.button("↻ Refresh intelligence", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
 
     st.markdown("### Live architecture")
-    st.markdown("**PostgreSQL**  →  **ML Engine**  →  **FastAPI**  →  **Streamlit**")
-
+    st.markdown("**PostgreSQL → ML Engine → FastAPI → Streamlit**")
     st.divider()
+
     st.markdown("### Intelligence layers")
-    st.markdown("• International cocoa prices")
-    st.markdown("• FX context")
-    st.markdown("• Weather & crop risk")
-    st.markdown("• XGBoost")
-    st.markdown("• Random Forest")
-    st.markdown("• Time-Series")
-    st.markdown("• Ensemble intelligence")
+    st.markdown(
+        """
+        • International cocoa prices
+
+        • FX context
+
+        • Weather & crop risk
+
+        • XGBoost
+
+        • Random Forest
+
+        • Time-Series
+
+        • Ensemble intelligence
+        """
+    )
 
     st.divider()
-    st.caption("ML outputs are experimental and require further historical validation.")
+    st.caption(
+        "ML outputs are experimental and require further historical validation."
+    )
 
 
 # ============================================================
-# MAIN
+# MARKET INTELLIGENCE API
 # ============================================================
+
 data = get_json("/market-intelligence")
 
 if show_error("FastAPI connection failed", data):
-    st.info("Keep the FastAPI backend running on port 8000.")
+    st.info("Keep FastAPI running on port 8000.")
     st.stop()
 
-intel = data.get("intelligence", data.get("market_intelligence", data))
+intel = data.get(
+    "intelligence",
+    data.get("market_intelligence", data),
+)
+
+if not isinstance(intel, dict):
+    st.error("Unexpected /market-intelligence response.")
+    st.stop()
+
+
+# ============================================================
+# CORE VALUES
+# ============================================================
 
 latest = intel.get("latest_price")
 forecast = intel.get("forecast_price")
@@ -280,98 +294,194 @@ change = intel.get("expected_change_pct")
 low = intel.get("forecast_low")
 high = intel.get("forecast_high")
 confidence = intel.get("confidence_index")
-risk = first(intel.get("risk_level"), intel.get("risk"))
+
+risk = first(
+    intel.get("risk_level"),
+    intel.get("risk"),
+)
+
 direction = first(
     intel.get("ensemble_direction"),
     intel.get("direction"),
-    intel.get("market_direction")
+    intel.get("market_direction"),
 )
-agreement = first(intel.get("model_agreement"), intel.get("agreement"))
-signal = first(intel.get("signal"), intel.get("market_signal"))
-market_state = first(intel.get("market_state"), intel.get("market"))
+
+agreement = first(
+    intel.get("model_agreement"),
+    intel.get("agreement"),
+)
+
+signal = first(
+    intel.get("signal"),
+    intel.get("market_signal"),
+)
+
+market_state = first(
+    intel.get("market_state"),
+    intel.get("market"),
+)
+
 horizon = first(
     intel.get("horizon"),
     intel.get("forecast_horizon"),
-    default="30-trading-days"
+    default="30-trading-days",
 )
+
 models = intel.get("models", [])
 
 xgb = model_value(models, ["xgboost", "xgb"])
-rf = model_value(models, ["random forest", "random_forest", "randomforest", "rf"])
-ts = model_value(models, ["time-series", "time_series", "timeseries", "time series"])
+rf = model_value(
+    models,
+    ["random forest", "random_forest", "randomforest", "rf"],
+)
+ts = model_value(
+    models,
+    ["time-series", "time_series", "timeseries", "time series"],
+)
+
+# Nigerian benchmark and forecast returned by FastAPI.
+nigeria_price = intel.get("nigeria_price_ngn")
+nigeria_forecast = intel.get("nigeria_forecast_ngn")
 
 
-# ---------- Hero ----------
-st.markdown("""
+# ============================================================
+# HERO
+# ============================================================
+
+st.markdown(
+    """
 <div class="hero">
-    <div class="badge">● LIVE INTELLIGENCE ENGINE</div>
+    <div><b>● LIVE INTELLIGENCE ENGINE</b></div>
     <div class="hero-title">Cocoa Intelligence Hub</div>
-    <div class="hero-sub">
-        Evidence-based market intelligence for cocoa traders, exporters and researchers.
+    <div>
+        Evidence-based market intelligence for cocoa traders,
+        exporters and researchers.
     </div>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 
-# ---------- Executive summary ----------
-st.markdown('<div class="section-label">Executive Market View</div>', unsafe_allow_html=True)
+# ============================================================
+# EXECUTIVE VIEW
+# ============================================================
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Latest ICCO Price", f"${fmt_num(latest)}")
-c2.metric("30-Day Ensemble", f"${fmt_num(forecast)}")
-c3.metric("Expected Change", fmt_pct(change))
-c4.metric("Confidence", f"{fmt_num(confidence, 0)}/100" if confidence is not None else "—")
+st.markdown(
+    '<div class="section-label">Executive Market View</div>',
+    unsafe_allow_html=True,
+)
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Direction", direction)
-c2.metric("Risk", risk)
-c3.metric("Market State", market_state)
-c4.metric("Signal", signal)
+a, b, c, d = st.columns(4)
+
+a.metric(
+    "Latest ICCO Price",
+    f"${fmt_num(latest)}",
+)
+
+b.metric(
+    "30-Day Ensemble",
+    f"${fmt_num(forecast)}",
+)
+
+c.metric(
+    "Expected Change",
+    fmt_pct(change),
+)
+
+d.metric(
+    "Confidence",
+    f"{fmt_num(confidence, 0)}/100"
+    if confidence is not None
+    else "—",
+)
+
+a, b, c, d = st.columns(4)
+
+a.metric("Direction", direction)
+b.metric("Risk", risk)
+c.metric("Market State", market_state)
+d.metric("Signal", signal)
 
 
 # ============================================================
 # TABS
 # ============================================================
-tab_market, tab_models, tab_context, tab_nigeria, tab_system = st.tabs([
-    "📊 Market",
-    "🧠 ML Models",
-    "🌦️ Market Context",
-    "🇳🇬 Nigeria",
-    "⚙️ System",
-])
+
+tab_market, tab_models, tab_context, tab_nigeria, tab_system = st.tabs(
+    [
+        "📊 Market",
+        "🧠 ML Models",
+        "🌦️ Market Context",
+        "🇳🇬 Nigeria",
+        "⚙️ System",
+    ]
+)
 
 
 # ============================================================
 # MARKET
 # ============================================================
+
 with tab_market:
-    st.markdown('<div class="section-label">Forecast Intelligence</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-label">Forecast Intelligence</div>',
+        unsafe_allow_html=True,
+    )
 
     left, right = st.columns([1.05, 1])
 
     with left:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="panel">',
+            unsafe_allow_html=True,
+        )
+
         st.markdown("### Forecast Range")
-        r1, r2 = st.columns(2)
-        r1.metric("Lower Bound", f"${fmt_num(low)}")
-        r2.metric("Upper Bound", f"${fmt_num(high)}")
+
+        p, q = st.columns(2)
+
+        p.metric(
+            "Lower Bound",
+            f"${fmt_num(low)}",
+        )
+
+        q.metric(
+            "Upper Bound",
+            f"${fmt_num(high)}",
+        )
+
         st.write(f"**Horizon:** {horizon}")
         st.write(f"**Model agreement:** {agreement}")
 
-        if low is not None and high is not None and forecast is not None:
-            chart = pd.DataFrame(
-                {"Price": [low, forecast, high]},
-                index=["Lower", "Ensemble", "Upper"],
+        if (
+            low is not None
+            and high is not None
+            and forecast is not None
+        ):
+            st.bar_chart(
+                pd.DataFrame(
+                    {"Price": [low, forecast, high]},
+                    index=["Lower", "Ensemble", "Upper"],
+                ),
+                height=260,
             )
-            st.bar_chart(chart, height=260)
 
         st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
-        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="panel">',
+            unsafe_allow_html=True,
+        )
+
         st.markdown("### Intelligence Drivers")
 
-        drivers = intel.get("drivers", intel.get("key_drivers", []))
+        drivers = intel.get(
+            "drivers",
+            intel.get("key_drivers", []),
+        )
+
         if isinstance(drivers, list) and drivers:
             for item in drivers:
                 st.markdown(f"• {item}")
@@ -381,10 +491,15 @@ with tab_market:
             st.write("No driver details returned.")
 
         st.markdown("### Cautions")
+
         cautions = intel.get(
             "cautions",
-            intel.get("risks", intel.get("warnings", [])),
+            intel.get(
+                "risks",
+                intel.get("warnings", []),
+            ),
         )
+
         if isinstance(cautions, list) and cautions:
             for item in cautions:
                 st.markdown(f"• {item}")
@@ -399,64 +514,63 @@ with tab_market:
 # ============================================================
 # ML MODELS
 # ============================================================
-with tab_models:
-    st.markdown('<div class="section-label">Machine Learning Layer</div>', unsafe_allow_html=True)
 
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("XGBoost", f"${fmt_num(xgb)}")
-    m2.metric("Random Forest", f"${fmt_num(rf)}")
-    m3.metric("Time-Series", f"${fmt_num(ts)}")
-    m4.metric("Ensemble", f"${fmt_num(forecast)}")
+with tab_models:
+    st.markdown(
+        '<div class="section-label">Machine Learning Layer</div>',
+        unsafe_allow_html=True,
+    )
+
+    a, b, c, d = st.columns(4)
+
+    a.metric("XGBoost", f"${fmt_num(xgb)}")
+    b.metric("Random Forest", f"${fmt_num(rf)}")
+    c.metric("Time-Series", f"${fmt_num(ts)}")
+    d.metric("Ensemble", f"${fmt_num(forecast)}")
 
     if models:
-        model_table = []
-        for m in models:
-            model_table.append({
-                "Model": m.get("model", "—"),
-                "Forecast": m.get("forecast"),
-                "Weight": m.get("weight"),
-                "MAE": m.get("mae"),
-                "RMSE": m.get("rmse"),
-                "MAPE": m.get("mape"),
-                "Eligible": m.get("eligible"),
-            })
-        st.markdown("### Model Performance & Forecasts")
+        table = [
+            {
+                "Model": model.get("model", "—"),
+                "Forecast": model.get("forecast"),
+                "Weight": model.get("weight"),
+                "MAE": model.get("mae"),
+                "RMSE": model.get("rmse"),
+                "MAPE": model.get("mape"),
+                "Eligible": model.get("eligible"),
+            }
+            for model in models
+        ]
+
         st.dataframe(
-            pd.DataFrame(model_table),
+            pd.DataFrame(table),
             use_container_width=True,
             hide_index=True,
         )
 
-    if models:
-        chart_rows = []
-        for m in models:
-            if isinstance(m, dict) and isinstance(m.get("forecast"), (int, float)):
-                chart_rows.append({
-                    "Model": str(m.get("model", "Model")),
-                    "Forecast": m.get("forecast"),
-                })
-        if chart_rows:
-            st.markdown("### Forecast Comparison")
-            chart_df = pd.DataFrame(chart_rows).set_index("Model")
-            st.bar_chart(chart_df, height=320)
-
     st.info(
-        "Model status: EXPERIMENTAL — the ensemble should be validated against a larger "
-        "historical dataset before being treated as a production trading model."
+        "Model status: EXPERIMENTAL — validate against a larger "
+        "historical dataset before production trading use."
     )
 
 
 # ============================================================
 # MARKET CONTEXT
 # ============================================================
-with tab_context:
-    st.markdown('<div class="section-label">External Market Context</div>', unsafe_allow_html=True)
 
-    # International prices
+with tab_context:
+    st.markdown(
+        '<div class="section-label">External Market Context</div>',
+        unsafe_allow_html=True,
+    )
+
     st.markdown("### 🍫 International Cocoa Market")
+
     prices = get_json("/prices")
+
     if not show_error("Price feed unavailable", prices):
         price_rows = rows_from(prices)
+
         if price_rows:
             st.dataframe(
                 pd.DataFrame(price_rows),
@@ -464,180 +578,268 @@ with tab_context:
                 hide_index=True,
             )
 
-    # FX
     st.markdown("### 💱 Foreign Exchange")
+
     fx = get_json("/fx")
+
     if not show_error("FX feed unavailable", fx):
-        fx_rows = []
-        source_items = fx if isinstance(fx, list) else fx.get("pairs", []) if isinstance(fx, dict) else []
+        items = (
+            fx.get("pairs", fx.get("data", []))
+            if isinstance(fx, dict)
+            else fx
+        )
 
-        if isinstance(source_items, dict):
-            source_items = list(source_items.items())
-            for pair, item in source_items:
-                if isinstance(item, dict):
-                    fx_rows.append({
-                        "Pair": pair,
-                        "Base": item.get("base_currency", "—"),
-                        "Quote": item.get("quote_currency", "—"),
-                        "Rate": item.get("rate"),
-                        "Date": item.get("rate_date", "—"),
-                        "Source": item.get("source", "—"),
-                    })
-        elif isinstance(source_items, list):
-            for item in source_items:
-                if isinstance(item, dict):
-                    fx_rows.append({
-                        "Pair": f"{item.get('base_currency', '—')}/{item.get('quote_currency', '—')}",
-                        "Base": item.get("base_currency", "—"),
-                        "Quote": item.get("quote_currency", "—"),
-                        "Rate": item.get("rate"),
-                        "Date": item.get("rate_date", "—"),
-                        "Source": item.get("source", "—"),
-                    })
+        out = []
 
-        if fx_rows:
+        if isinstance(items, dict):
+            for pair, item in items.items():
+                if isinstance(item, dict):
+                    out.append(
+                        {
+                            "Pair": pair,
+                            "Rate": item.get("rate"),
+                            "Date": item.get(
+                                "rate_date",
+                                item.get("date", "—"),
+                            ),
+                            "Source": item.get("source", "—"),
+                        }
+                    )
+
+        elif isinstance(items, list):
+            for item in items:
+                if isinstance(item, dict):
+                    out.append(
+                        {
+                            "Pair": (
+                                f"{item.get('base_currency', '—')}/"
+                                f"{item.get('quote_currency', '—')}"
+                            ),
+                            "Rate": item.get("rate"),
+                            "Date": item.get(
+                                "rate_date",
+                                item.get("date", "—"),
+                            ),
+                            "Source": item.get("source", "—"),
+                        }
+                    )
+
+        if out:
             st.dataframe(
-                pd.DataFrame(fx_rows),
+                pd.DataFrame(out),
                 use_container_width=True,
                 hide_index=True,
             )
         else:
             st.info("No FX pairs returned.")
 
-    # Weather
     st.markdown("### 🌦️ Weather & Crop-Risk Context")
+
     weather = get_json("/weather")
 
     if not show_error("Weather feed unavailable", weather):
-        observations = weather.get("observations", []) if isinstance(weather, dict) else []
-        forecasts = weather.get("forecasts", []) if isinstance(weather, dict) else []
+        observations = (
+            weather.get("observations", [])
+            if isinstance(weather, dict)
+            else []
+        )
 
-        forecast_rows = forecasts if isinstance(forecasts, list) else []
-        temps, rain, risks = [], [], []
+        forecasts = (
+            weather.get("forecasts", [])
+            if isinstance(weather, dict)
+            else []
+        )
 
-        for item in forecast_rows:
-            if not isinstance(item, dict):
-                continue
-            if isinstance(item.get("temperature_max_c"), (int, float)):
-                temps.append(item["temperature_max_c"])
-            if isinstance(item.get("temperature_min_c"), (int, float)):
-                temps.append(item["temperature_min_c"])
-            if isinstance(item.get("rainfall_mm"), (int, float)):
-                rain.append(item["rainfall_mm"])
-            if isinstance(item.get("crop_risk_score"), (int, float)):
-                risks.append(item["crop_risk_score"])
+        st.metric(
+            "Weather Records",
+            len(observations)
+            if isinstance(observations, list)
+            else 0,
+        )
 
-        avg_temp = weather.get("average_temperature_c")
-        if avg_temp is None and temps:
-            avg_temp = sum(temps) / len(temps)
-
-        avg_rain = weather.get("average_rainfall_mm")
-        if avg_rain is None and rain:
-            avg_rain = sum(rain) / len(rain)
-
-        crop_risk = weather.get("average_crop_risk_score")
-        if crop_risk is None and risks:
-            crop_risk = sum(risks) / len(risks)
-
-        w1, w2, w3, w4 = st.columns(4)
-        w1.metric("Weather Records", fmt_num(len(observations), 0))
-        w2.metric("Avg Temperature", f"{fmt_num(avg_temp)} °C")
-        w3.metric("Avg Rainfall", f"{fmt_num(avg_rain)} mm")
-        w4.metric("Crop Risk", fmt_num(crop_risk))
-
-        if forecast_rows:
-            weather_table = []
-            for item in forecast_rows:
-                if isinstance(item, dict):
-                    weather_table.append({
-                        "Location": item.get("location", "—"),
-                        "Date": item.get("date", "—"),
-                        "Rainfall (mm)": item.get("rainfall_mm"),
-                        "Max °C": item.get("temperature_max_c"),
-                        "Min °C": item.get("temperature_min_c"),
-                        "Rain Probability %": item.get("rain_probability_pct"),
-                        "Crop Risk": item.get("crop_risk_score"),
-                        "Source": item.get("source", "—"),
-                    })
-            if weather_table:
-                st.dataframe(
-                    pd.DataFrame(weather_table),
-                    use_container_width=True,
-                    hide_index=True,
-                )
+        if isinstance(forecasts, list) and forecasts:
+            st.dataframe(
+                pd.DataFrame(forecasts),
+                use_container_width=True,
+                hide_index=True,
+            )
 
 
 # ============================================================
 # NIGERIA
 # ============================================================
-with tab_nigeria:
-    st.markdown('<div class="section-label">Nigeria Cocoa Intelligence</div>', unsafe_allow_html=True)
 
-    countries = get_json("/countries")
-    if not show_error("Country data unavailable", countries):
-        country_rows = rows_from(countries)
-        if country_rows:
-            st.dataframe(
-                pd.DataFrame(country_rows),
-                use_container_width=True,
-                hide_index=True,
-            )
+with tab_nigeria:
+    st.markdown(
+        '<div class="section-label">Nigeria Cocoa Intelligence</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("### 🇳🇬 Nigerian Cocoa Price Intelligence")
+
+    n1, n2, n3 = st.columns(3)
+
+    n1.metric(
+        "Estimated Nigeria Price",
+        (
+            f"₦{fmt_num(nigeria_price)}"
+            if nigeria_price is not None
+            else "—"
+        ),
+    )
+
+    n2.metric(
+        "Nigeria Cocoa Forecast",
+        (
+            f"₦{fmt_num(nigeria_forecast)}"
+            if nigeria_forecast is not None
+            else "—"
+        ),
+    )
+
+    if (
+        nigeria_price is not None
+        and nigeria_forecast is not None
+    ):
+        nigeria_change = (
+            (float(nigeria_forecast) / float(nigeria_price)) - 1
+        ) * 100
+
+        n3.metric(
+            "Forecast Change",
+            f"{nigeria_change:+.2f}%",
+        )
+    else:
+        n3.metric("Forecast Change", "—")
+
+    st.markdown(
+        '<div class="panel">',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("#### Nigerian Benchmark")
+
+    st.markdown(
+        (
+            f"### ₦{fmt_num(nigeria_price)}"
+            if nigeria_price is not None
+            else "### —"
+        )
+    )
+
+    st.write("Estimated Nigerian cocoa benchmark per tonne.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.markdown(
+        '<div class="panel">',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("#### Nigerian Forecast")
+
+    st.markdown(
+        (
+            f"### ₦{fmt_num(nigeria_forecast)}"
+            if nigeria_forecast is not None
+            else "### —"
+        )
+    )
+
+    st.write(f"Forecast horizon: {horizon}")
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    st.caption(
+        "The Nigerian estimate and forecast are generated automatically "
+        "from the international cocoa benchmark and current FX context."
+    )
 
     st.markdown("### 📰 Latest Cocoa News")
+
     news = get_json("/news")
+
     if not show_error("News feed unavailable", news):
         news_rows = rows_from(news)
+
         if news_rows:
             for item in news_rows[:10]:
                 if not isinstance(item, dict):
                     continue
+
                 title = item.get("title", "Untitled")
                 url = item.get("url")
-                published = item.get("published_at", "")
+
                 if url:
-                    st.markdown(f"**[{title}]({url})**")
+                    st.markdown(
+                        f"**[{title}]({url})**"
+                    )
                 else:
                     st.markdown(f"**{title}**")
-                if published:
-                    st.caption(str(published))
+
+                if item.get("published_at"):
+                    st.caption(
+                        str(item["published_at"])
+                    )
+
                 st.divider()
         else:
-            st.info("No stored news records returned.")
+            st.info(
+                "No stored news records returned."
+            )
 
 
 # ============================================================
 # SYSTEM
 # ============================================================
+
 with tab_system:
-    st.markdown('<div class="section-label">Platform Health</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-label">Platform Health</div>',
+        unsafe_allow_html=True,
+    )
 
-    h1, h2 = st.columns(2)
+    a, b = st.columns(2)
 
-    with h1:
+    with a:
         st.markdown("### API Health")
         health = get_json("/health")
-        if not show_error("API health unavailable", health):
+
+        if not show_error(
+            "API health unavailable",
+            health,
+        ):
             st.json(health)
 
-    with h2:
+    with b:
         st.markdown("### Database Health")
         db = get_json("/db-health")
-        if not show_error("Database health unavailable", db):
+
+        if not show_error(
+            "Database health unavailable",
+            db,
+        ):
             st.json(db)
 
-    st.markdown("### Connected Architecture")
     a, b, c, d = st.columns(4)
+
     a.metric("Database", "Connected")
     b.metric("FastAPI", "Online")
     c.metric("ML Engine", "Active")
     d.metric("Streamlit", "Online")
 
-    with st.expander("Raw /market-intelligence response"):
+    with st.expander(
+        "Raw /market-intelligence response"
+    ):
         st.json(data)
 
 
-# ---------- Footer ----------
+# ============================================================
+# FOOTER
+# ============================================================
+
 st.markdown("---")
+
 st.caption(
     "Cocoa Intelligence Hub • Experimental ML intelligence layer • "
     "International prices • FX • Weather • Crop Risk • Nigerian Cocoa Context"
