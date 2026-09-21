@@ -754,40 +754,47 @@ with tab_nigeria:
         "The Nigerian estimate and forecast are generated automatically "
         "from the international cocoa benchmark and current FX context."
     )
+st.markdown("### 🌍 Regional Cocoa News")
+st.caption("Nigeria 🇳🇬 · Ghana 🇬🇭 · Côte d’Ivoire 🇨🇮 · Cameroon 🇨🇲")
 
-    st.markdown("### 📰 Latest Cocoa News")
+news = get_json("/news")
 
-    news = get_json("/news")
+if not show_error("Regional news feed unavailable", news):
+    nr = rows_from(news)
 
-    if not show_error("News feed unavailable", news):
-        news_rows = rows_from(news)
+    if nr:
+        for item in nr[:20]:
+            if not isinstance(item, dict):
+                continue
 
-        if news_rows:
-            for item in news_rows[:10]:
-                if not isinstance(item, dict):
-                    continue
+            title = item.get("title", "Untitled")
+            url = item.get("url")
+            country = item.get("country") or item.get("country_name")
+            source = item.get("source")
 
-                title = item.get("title", "Untitled")
-                url = item.get("url")
-
-                if url:
-                    st.markdown(
-                        f"**[{title}]({url})**"
-                    )
-                else:
-                    st.markdown(f"**{title}**")
-
-                if item.get("published_at"):
-                    st.caption(
-                        str(item["published_at"])
-                    )
-
-                st.divider()
-        else:
-            st.info(
-                "No stored news records returned."
+            st.markdown(
+                f"**[{title}]({url})**"
+                if url
+                else f"**{title}**"
             )
 
+            metadata = []
+
+            if country:
+                metadata.append(str(country))
+
+            if source:
+                metadata.append(str(source))
+
+            if item.get("published_at"):
+                metadata.append(str(item["published_at"]))
+
+            if metadata:
+                st.caption(" • ".join(metadata))
+
+            st.divider()
+    else:
+        st.info("No regional cocoa news records returned.")
 
 # ============================================================
 # SYSTEM
