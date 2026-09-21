@@ -12,7 +12,7 @@ API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
 # IMPORTANT: This must be the FIRST Streamlit command in the file.
 st.set_page_config(
     page_title="Cocoa Intelligence Hub",
-    page_icon="🍫",
+    page_icon="file_0000000090e881f49f628ec095ce682d.png",
     layout="wide",
     initial_sidebar_state="expanded",
 )
