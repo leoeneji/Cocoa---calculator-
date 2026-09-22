@@ -30,7 +30,16 @@ CREATE TABLE IF NOT EXISTS sources (
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+CREATE TABLE IF NOT EXISTS fx_rates (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    base_currency VARCHAR(10) NOT NULL,
+    quote_currency VARCHAR(10) NOT NULL,
+    rate NUMERIC(20,8) NOT NULL,
+    rate_date DATE NOT NULL,
+    source VARCHAR(200),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (base_currency, quote_currency, rate_date)
+);
 -- =========================
 -- News / intelligence
 -- =========================
