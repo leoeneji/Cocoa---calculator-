@@ -27,6 +27,7 @@ jobs:
             numpy \
             pandas \
             psycopg2-binary \
+            psycopg[binary]\
             python-dotenv \
             requests \
             beautifulsoup4 \
