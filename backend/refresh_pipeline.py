@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PYTHON = ROOT / ".venv" / "bin" / "python"
+PYTHON = path(sys.executable)
 
 def run(label: str, *args: str) -> None:
     print(f"\n{'=' * 70}\n{label}\n{'=' * 70}")
