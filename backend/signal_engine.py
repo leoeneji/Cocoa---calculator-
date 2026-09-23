@@ -257,17 +257,7 @@ def _load_risk_context() -> Dict[str, Any]:
 def build_signal(horizon: str = "30") -> SignalResult:
     context = _load_risk_context()
 
-    try:
-       from backend.model_ensemble import build_all
-
-       model_outputs = build_all()
-       model_context = model_outputs[horizon]
-       models = model_context.get("models", [])
-    except Exception as exc:
-        raise RuntimeError(
-            "Could not load individual model forecasts from model_ensemble.py."
-        ) from exc
-
+   models = []
     if context["target"] != TARGET:
         raise RuntimeError(
             f"Unexpected target {context['target']!r}; "
