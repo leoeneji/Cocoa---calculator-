@@ -192,3 +192,13 @@ VALUES
     ('IDN', 'Indonesia', TRUE),
     ('GLB', 'Global', FALSE)
 ON CONFLICT (code) DO NOTHING;
+-- Historical foreign exchange rates
+CREATE TABLE IF NOT EXISTS fx_rates (
+    base_currency VARCHAR(3) NOT NULL,
+    quote_currency VARCHAR(3) NOT NULL,
+    rate NUMERIC(18,8) NOT NULL,
+    rate_date DATE NOT NULL,
+    source TEXT NOT NULL,
+    PRIMARY KEY (base_currency, quote_currency, rate_date)
+);
+
