@@ -257,7 +257,7 @@ def _load_risk_context() -> Dict[str, Any]:
 def build_signal(horizon: str = "30") -> SignalResult:
     context = _load_risk_context()
 
-   models = []
+    models = []
     if context["target"] != TARGET:
         raise RuntimeError(
             f"Unexpected target {context['target']!r}; "
