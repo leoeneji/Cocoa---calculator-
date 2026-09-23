@@ -409,6 +409,18 @@ def main() -> None:
         print(f"TOTAL DAILY ROWS FOUND: {len(rows)}")
         if not rows:
             raise RuntimeError("ICCO returned zero historical daily rows")
+        # Final homepage sync: ICCO can publish a newer official daily
+        # observation before the historical/AJAX table catches up.
+        latest = fetch_latest_homepage_row()
+        if latest:
+            rows = [row for row in rows if row["date"] != latest["date"]]
+            rows.append(latest)
+            rows.sort(key=lambda row: row["date"], reverse=True)
+            print("FINAL ICCO HOMEPAGE SYNC: {} | USD {}".format(
+                latest["date"],
+                latest["icco_daily_usd"],
+            ))
+
         save_prices(rows)
         verify_database()
         print("\nICCO HISTORICAL COLLECTOR: PASSED")
