@@ -32,6 +32,7 @@ LOCATIONS = [
 ]
 
 TIMEZONE = "Africa/Lagos"
+FORECAST_DAYS = 7
 
 
 def fetch_weather():
@@ -53,6 +54,15 @@ def fetch_weather():
             "relative_humidity_2m,"
             "precipitation"
         ),
+        "daily": (
+            "precipitation_sum,"
+            "temperature_2m_max,"
+            "temperature_2m_min,"
+            "precipitation_probability_max,"
+            "precipitation_hours,"
+            "relative_humidity_2m_mean"
+        ),
+        "forecast_days": FORECAST_DAYS,
         "timezone": TIMEZONE,
     }
 
@@ -64,7 +74,18 @@ def fetch_weather():
 
     response.raise_for_status()
 
-    return response.json()
+    data = response.json()
+
+    if isinstance(data, dict):
+        data = [data]
+
+    if len(data) != len(LOCATIONS):
+        raise RuntimeError(
+            f"Expected {len(LOCATIONS)} weather responses, "
+            f"got {len(data)}."
+        )
+
+    return data
 
 
 def calculate_crop_risk_score(
@@ -72,28 +93,56 @@ def calculate_crop_risk_score(
     humidity,
     rainfall,
 ):
-    score = 0
+    score = 0.0
 
-    if humidity >= 90:
-        score += 35
-    elif humidity >= 80:
-        score += 25
-    elif humidity >= 70:
-        score += 15
+    if humidity is not None:
+        if humidity >= 90:
+            score += 35
+        elif humidity >= 80:
+            score += 25
+        elif humidity >= 70:
+            score += 15
 
-    if rainfall >= 10:
-        score += 35
-    elif rainfall >= 5:
-        score += 25
-    elif rainfall >= 1:
-        score += 10
+    if rainfall is not None:
+        if rainfall >= 10:
+            score += 35
+        elif rainfall >= 5:
+            score += 25
+        elif rainfall >= 1:
+            score += 10
 
-    if temperature >= 32:
-        score += 20
-    elif temperature <= 18:
-        score += 15
+    if temperature is not None:
+        if temperature >= 32:
+            score += 20
+        elif temperature <= 18:
+            score += 15
 
-    return min(score, 100)
+    return min(score, 100.0)
+
+
+def ensure_weather_forecasts_table(conn):
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            CREATE TABLE IF NOT EXISTS weather_forecasts (
+                id BIGSERIAL PRIMARY KEY,
+                country_id INTEGER NOT NULL,
+                location TEXT NOT NULL,
+                forecast_date DATE NOT NULL,
+                precipitation_sum_mm DOUBLE PRECISION,
+                temperature_max_c DOUBLE PRECISION,
+                temperature_min_c DOUBLE PRECISION,
+                precipitation_probability_pct DOUBLE PRECISION,
+                precipitation_hours DOUBLE PRECISION,
+                crop_risk_score DOUBLE PRECISION,
+                source TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                UNIQUE (location, forecast_date)
+            )
+            """
+        )
+
+    conn.commit()
 
 
 def save_weather(data):
@@ -101,13 +150,14 @@ def save_weather(data):
 
     try:
         with conn.cursor() as cur:
-
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT id
                 FROM countries
                 WHERE code = 'NGA'
                 LIMIT 1
-            """)
+                """
+            )
 
             country = cur.fetchone()
 
@@ -118,8 +168,13 @@ def save_weather(data):
 
             country_id = country[0]
 
-            for location, weather in zip(LOCATIONS, data):
+        ensure_weather_forecasts_table(conn)
 
+        with conn.cursor() as cur:
+            for location, weather in zip(
+                LOCATIONS,
+                data,
+            ):
                 current = weather["current"]
 
                 observation_time = datetime.fromisoformat(
@@ -128,11 +183,15 @@ def save_weather(data):
 
                 observation_date = observation_time.date()
 
-                crop_risk_score = calculate_crop_risk_score(
-                    current["temperature_2m"],
-                    current["relative_humidity_2m"],
-                    current["precipitation"],
+                current_risk = calculate_crop_risk_score(
+                    current.get("temperature_2m"),
+                    current.get("relative_humidity_2m"),
+                    current.get("precipitation"),
                 )
+
+                # --------------------------------------------
+                # CURRENT WEATHER OBSERVATION
+                # --------------------------------------------
 
                 cur.execute(
                     """
@@ -155,8 +214,11 @@ def save_weather(data):
                         %s,
                         %s,
                         %s
-                       )
-                    ON CONFLICT (location, observation_date)
+                    )
+                    ON CONFLICT (
+                        location,
+                        observation_date
+                    )
                     DO UPDATE SET
                         rainfall_mm = EXCLUDED.rainfall_mm,
                         temperature_c = EXCLUDED.temperature_c,
@@ -168,46 +230,190 @@ def save_weather(data):
                         country_id,
                         location["name"],
                         observation_date,
-                        current["precipitation"],
-                        current["temperature_2m"],
-                        current["relative_humidity_2m"],
-                        crop_risk_score,
+                        current.get("precipitation"),
+                        current.get("temperature_2m"),
+                        current.get("relative_humidity_2m"),
+                        current_risk,
                         "Open-Meteo",
                     ),
                 )
 
+                # --------------------------------------------
+                # 7-DAY FORECAST
+                # --------------------------------------------
+
+                daily = weather.get("daily", {})
+
+                dates = daily.get("time", [])
+                rainfall = daily.get("precipitation_sum", [])
+                temp_max = daily.get("temperature_2m_max", [])
+                temp_min = daily.get("temperature_2m_min", [])
+                rain_probability = daily.get(
+                    "precipitation_probability_max",
+                    [],
+                )
+                rain_hours = daily.get(
+                    "precipitation_hours",
+                    [],
+                )
+                humidity = daily.get(
+                    "relative_humidity_2m_mean",
+                    [],
+                )
+
+                for index, forecast_date in enumerate(dates):
+                    rainfall_value = (
+                        rainfall[index]
+                        if index < len(rainfall)
+                        else None
+                    )
+
+                    temp_max_value = (
+                        temp_max[index]
+                        if index < len(temp_max)
+                        else None
+                    )
+
+                    temp_min_value = (
+                        temp_min[index]
+                        if index < len(temp_min)
+                        else None
+                    )
+
+                    probability_value = (
+                        rain_probability[index]
+                        if index < len(rain_probability)
+                        else None
+                    )
+
+                    hours_value = (
+                        rain_hours[index]
+                        if index < len(rain_hours)
+                        else None
+                    )
+
+                    humidity_value = (
+                        humidity[index]
+                        if index < len(humidity)
+                        else None
+                    )
+
+                    forecast_risk = calculate_crop_risk_score(
+                        temp_max_value,
+                        humidity_value,
+                        rainfall_value,
+                    )
+
+                    cur.execute(
+                        """
+                        INSERT INTO weather_forecasts (
+                            country_id,
+                            location,
+                            forecast_date,
+                            precipitation_sum_mm,
+                            temperature_max_c,
+                            temperature_min_c,
+                            precipitation_probability_pct,
+                            precipitation_hours,
+                            crop_risk_score,
+                            source
+                        )
+                        VALUES (
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s,
+                            %s
+                        )
+                        ON CONFLICT (
+                            location,
+                            forecast_date
+                        )
+                        DO UPDATE SET
+                            country_id = EXCLUDED.country_id,
+                            precipitation_sum_mm =
+                                EXCLUDED.precipitation_sum_mm,
+                            temperature_max_c =
+                                EXCLUDED.temperature_max_c,
+                            temperature_min_c =
+                                EXCLUDED.temperature_min_c,
+                            precipitation_probability_pct =
+                                EXCLUDED.precipitation_probability_pct,
+                            precipitation_hours =
+                                EXCLUDED.precipitation_hours,
+                            crop_risk_score =
+                                EXCLUDED.crop_risk_score,
+                            source =
+                                EXCLUDED.source
+                        """,
+                        (
+                            country_id,
+                            location["name"],
+                            forecast_date,
+                            rainfall_value,
+                            temp_max_value,
+                            temp_min_value,
+                            probability_value,
+                            hours_value,
+                            forecast_risk,
+                            "Open-Meteo",
+                        ),
+                    )
+
         conn.commit()
+
+    except Exception:
+        conn.rollback()
+        raise
 
     finally:
         conn.close()
 
 
 if __name__ == "__main__":
-
     data = fetch_weather()
 
     print("OPEN-METEO CONNECTION: OK")
     print(f"LOCATIONS RECEIVED: {len(data)}")
 
-    for location, weather in zip(LOCATIONS, data):
+    total_forecast_rows = 0
 
+    for location, weather in zip(
+        LOCATIONS,
+        data,
+    ):
         current = weather["current"]
 
-        crop_risk_score = calculate_crop_risk_score(
-            current["temperature_2m"],
-            current["relative_humidity_2m"],
-            current["precipitation"],
+        current_risk = calculate_crop_risk_score(
+            current.get("temperature_2m"),
+            current.get("relative_humidity_2m"),
+            current.get("precipitation"),
         )
+
+        daily = weather.get("daily", {})
+        forecast_dates = daily.get("time", [])
 
         print()
         print(f"{location['name']} WEATHER:")
         print(current)
-        print(
-            f"CROP RISK SCORE: "
-            f"{crop_risk_score}/100"
-        )
+        print(f"CROP RISK SCORE: {current_risk}/100")
+        print(f"FORECAST DAYS: {len(forecast_dates)}")
+
+        total_forecast_rows += len(forecast_dates)
 
     save_weather(data)
 
     print()
-    print("WEATHER SAVED TO DATABASE")
+    print(
+        f"FORECAST ROWS SAVED/UPDATED: "
+        f"{total_forecast_rows}"
+    )
+    print(
+        "WEATHER OBSERVATIONS AND "
+        "FORECASTS SAVED TO DATABASE"
+    )
