@@ -88,11 +88,7 @@ def fetch_weather():
     return data
 
 
-def calculate_crop_risk_score(
-    temperature,
-    humidity,
-    rainfall,
-):
+def calculate_crop_risk_score( temperature, humidity, rainfall, ):
     score = 0.0
 
     if humidity is not None:
@@ -123,23 +119,7 @@ def calculate_crop_risk_score(
 def ensure_weather_forecasts_table(conn):
     with conn.cursor() as cur:
         cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS weather_forecasts (
-                id BIGSERIAL PRIMARY KEY,
-                country_id INTEGER NOT NULL,
-                location TEXT NOT NULL,
-                forecast_date DATE NOT NULL,
-                precipitation_sum_mm DOUBLE PRECISION,
-                temperature_max_c DOUBLE PRECISION,
-                temperature_min_c DOUBLE PRECISION,
-                precipitation_probability_pct DOUBLE PRECISION,
-                precipitation_hours DOUBLE PRECISION,
-                crop_risk_score DOUBLE PRECISION,
-                source TEXT NOT NULL,
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                UNIQUE (location, forecast_date)
-            )
-            """
+            """ CREATE TABLE IF NOT EXISTS weather_forecasts ( id BIGSERIAL PRIMARY KEY, country_id UUID NOT NULL, location TEXT NOT NULL, forecast_date DATE NOT NULL, precipitation_sum_mm DOUBLE PRECISION, temperature_max_c DOUBLE PRECISION, temperature_min_c DOUBLE PRECISION, precipitation_probability_pct DOUBLE PRECISION, precipitation_hours DOUBLE PRECISION, crop_risk_score DOUBLE PRECISION, source TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE (location, forecast_date) ) """
         )
 
     conn.commit()
@@ -151,12 +131,7 @@ def save_weather(data):
     try:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT id
-                FROM countries
-                WHERE code = 'NGA'
-                LIMIT 1
-                """
+                """ SELECT id FROM countries WHERE code = 'NGA' LIMIT 1 """
             )
 
             country = cur.fetchone()
@@ -194,38 +169,7 @@ def save_weather(data):
                 # --------------------------------------------
 
                 cur.execute(
-                    """
-                    INSERT INTO weather_observations (
-                        country_id,
-                        location,
-                        observation_date,
-                        rainfall_mm,
-                        temperature_c,
-                        humidity_pct,
-                        crop_risk_score,
-                        source
-                    )
-                    VALUES (
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s,
-                        %s
-                    )
-                    ON CONFLICT (
-                        location,
-                        observation_date
-                    )
-                    DO UPDATE SET
-                        rainfall_mm = EXCLUDED.rainfall_mm,
-                        temperature_c = EXCLUDED.temperature_c,
-                        humidity_pct = EXCLUDED.humidity_pct,
-                        crop_risk_score = EXCLUDED.crop_risk_score,
-                        source = EXCLUDED.source
-                    """,
+                    """ INSERT INTO weather_observations ( country_id, location, observation_date, rainfall_mm, temperature_c, humidity_pct, crop_risk_score, source ) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s ) ON CONFLICT ( location, observation_date ) DO UPDATE SET rainfall_mm = EXCLUDED.rainfall_mm, temperature_c = EXCLUDED.temperature_c, humidity_pct = EXCLUDED.humidity_pct, crop_risk_score = EXCLUDED.crop_risk_score, source = EXCLUDED.source """,
                     (
                         country_id,
                         location["name"],
@@ -305,52 +249,7 @@ def save_weather(data):
                     )
 
                     cur.execute(
-                        """
-                        INSERT INTO weather_forecasts (
-                            country_id,
-                            location,
-                            forecast_date,
-                            precipitation_sum_mm,
-                            temperature_max_c,
-                            temperature_min_c,
-                            precipitation_probability_pct,
-                            precipitation_hours,
-                            crop_risk_score,
-                            source
-                        )
-                        VALUES (
-                            %s,
-                            %s,
-                            %s,
-                            %s,
-                            %s,
-                            %s,
-                            %s,
-                            %s,
-                            %s,
-                            %s
-                        )
-                        ON CONFLICT (
-                            location,
-                            forecast_date
-                        )
-                        DO UPDATE SET
-                            country_id = EXCLUDED.country_id,
-                            precipitation_sum_mm =
-                                EXCLUDED.precipitation_sum_mm,
-                            temperature_max_c =
-                                EXCLUDED.temperature_max_c,
-                            temperature_min_c =
-                                EXCLUDED.temperature_min_c,
-                            precipitation_probability_pct =
-                                EXCLUDED.precipitation_probability_pct,
-                            precipitation_hours =
-                                EXCLUDED.precipitation_hours,
-                            crop_risk_score =
-                                EXCLUDED.crop_risk_score,
-                            source =
-                                EXCLUDED.source
-                        """,
+                        """ INSERT INTO weather_forecasts ( country_id, location, forecast_date, precipitation_sum_mm, temperature_max_c, temperature_min_c, precipitation_probability_pct, precipitation_hours, crop_risk_score, source ) VALUES ( %s, %s, %s, %s, %s, %s, %s, %s, %s, %s ) ON CONFLICT ( location, forecast_date ) DO UPDATE SET country_id = EXCLUDED.country_id, precipitation_sum_mm = EXCLUDED.precipitation_sum_mm, temperature_max_c = EXCLUDED.temperature_max_c, temperature_min_c = EXCLUDED.temperature_min_c, precipitation_probability_pct = EXCLUDED.precipitation_probability_pct, precipitation_hours = EXCLUDED.precipitation_hours, crop_risk_score = EXCLUDED.crop_risk_score, source = EXCLUDED.source """,
                         (
                             country_id,
                             location["name"],
@@ -416,4 +315,5 @@ if __name__ == "__main__":
     print(
         "WEATHER OBSERVATIONS AND "
         "FORECASTS SAVED TO DATABASE"
-    )
+)
+    
