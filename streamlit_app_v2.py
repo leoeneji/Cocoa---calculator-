@@ -78,24 +78,27 @@ st.markdown(
     box-shadow: 0 7px 20px rgba(0, 0, 0, .16);
 }
 
-[data-testid="stMetricLabel"] {
+.stApp [data-testid="stMetricLabel"],
+.stApp [data-testid="stMetricLabel"] * {
     color: #6b4632 !important;
     font-size: 0.78rem !important;
     line-height: 1.15 !important;
-    font-weight: 750;
+    font-weight: 750 !important;
 }
 
-[data-testid="stMetricValue"] {
+.stApp [data-testid="stMetricValue"],
+.stApp [data-testid="stMetricValue"] * {
     color: #4a2416 !important;
     font-size: 1.28rem !important;
     line-height: 1.15 !important;
-    font-weight: 850;
+    font-weight: 850 !important;
     white-space: normal !important;
-    overflow-wrap: anywhere;
-    word-break: normal;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
 }
 
-[data-testid="stMetricDelta"] {
+.stApp [data-testid="stMetricDelta"],
+.stApp [data-testid="stMetricDelta"] * {
     font-size: 0.82rem !important;
     line-height: 1.15 !important;
 }
