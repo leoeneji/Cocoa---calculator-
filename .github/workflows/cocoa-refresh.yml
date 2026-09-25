@@ -28,25 +28,7 @@ jobs:
           env:
             DATABASE_URL: ${{ secrets.DATABASE_URL }}
           run: |
-            python - <<'PYSQL'
-            import os
-            import psycopg2
-
-            database_url = os.environ["DATABASE_URL"]
-
-            with psycopg2.connect(database_url) as conn:
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        CREATE TABLE IF NOT EXISTS ensemble_results (
-                            horizon TEXT PRIMARY KEY,
-                            latest_date DATE NOT NULL,
-                            result JSONB NOT NULL,
-                            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                        );
-                    """)
-
-            print("ensemble_results table is ready.")
-            PYSQL
+            python -c 'import os, psycopg2; conn = psycopg2.connect(os.environ["DATABASE_URL"]); cur = conn.cursor(); cur.execute("CREATE TABLE IF NOT EXISTS ensemble_results (horizon TEXT PRIMARY KEY, latest_date DATE NOT NULL, result JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());"); conn.commit(); cur.close(); conn.close(); print("ensemble_results table is ready.")'
 
  - name: Run official ICCO + ML refresh
         env:
