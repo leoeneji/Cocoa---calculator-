@@ -24,13 +24,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
-      - name: Ensure ensemble results table exists
-          env:
-            DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          run: |
-            python -c 'import os, psycopg2; conn = psycopg2.connect(os.environ["DATABASE_URL"]); cur = conn.cursor(); cur.execute("CREATE TABLE IF NOT EXISTS ensemble_results (horizon TEXT PRIMARY KEY, latest_date DATE NOT NULL, result JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());"); conn.commit(); cur.close(); conn.close(); print("ensemble_results table is ready.")'
-
- - name: Run official ICCO + ML refresh
+      - name: Run official ICCO + ML refresh
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONUNBUFFERED: "1"
