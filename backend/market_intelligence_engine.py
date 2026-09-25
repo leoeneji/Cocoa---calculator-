@@ -30,7 +30,7 @@ import psycopg2
 from dotenv import load_dotenv
 
 from backend.nigeria_price_engine import estimate_ngn_price, forecast_ngn_price
-
+from backend.signal_engine import build_signal
 load_dotenv()
 
 TARGET = "ICCO-DAILY-USD"
@@ -81,6 +81,8 @@ class IntelligenceResult:
     target: str
     observation_date: str
     latest_price: float
+
+    # 30-day canonical intelligence
     signal: str
     direction: str
     confidence_index: float
@@ -90,18 +92,36 @@ class IntelligenceResult:
     expected_change_pct: Optional[float]
     forecast_low: Optional[float]
     forecast_high: Optional[float]
-    fx_context: dict[str, Any]
-    weather_context: dict[str, Any]
-    news_context: dict[str, Any]
-    market_state: str
-    intelligence_state: str
-    drivers: list[str]
-    cautions: list[str]
-    models: list[dict[str, Any]]
-    data_integrity: dict[str, bool]
+
+    # 7-day forecast
+    forecast_7_price: Optional[float] = None
+    expected_change_7_pct: Optional[float] = None
+    forecast_7_low: Optional[float] = None
+    forecast_7_high: Optional[float] = None
+    direction_7: str = "UNKNOWN"
+    model_agreement_7: str = "UNKNOWN"
+    models_7: Optional[list[dict[str, Any]]] = None
+
+    fx_context: Optional[dict[str, Any]] = None
+    weather_context: Optional[dict[str, Any]] = None
+    news_context: Optional[dict[str, Any]] = None
+
+    market_state: str = "UNKNOWN"
+    intelligence_state: str = "WATCH"
+
+    drivers: Optional[list[str]] = None
+    cautions: Optional[list[str]] = None
+    models: Optional[list[dict[str, Any]]] = None
+
+    data_integrity: Optional[dict[str, bool]] = None
+
+    
+    forecast_7_price: Optional[float] = None
+    expected_change_7_pct: Optional[float] = None
     nigeria_price_ngn: Optional[float] = None
     nigeria_forecast_ngn: Optional[float] = None
-
+    ensemble_7: Optional[dict[str, Any]] = None
+    ensemble_30: Optional[dict[str, Any]] = None
 
 def load_latest_target(cur) -> tuple[date, float]:
     cur.execute(
@@ -373,34 +393,142 @@ def calculate_nigeria_benchmark(
     except (AttributeError, TypeError, ValueError, ArithmeticError):
         return None, None
 
+def normalize_ensemble(
+    signal: Optional[dict[str, Any]],
+) -> Optional[dict[str, Any]]:
+    """
+    Convert a SignalResult dictionary into a stable
+    horizon-specific API structure.
+    """
+    if not signal:
+        return None
 
+    return {
+        "latest_date": signal.get("latest_date"),
+        "latest_price": safe_float(signal.get("latest_price")),
+        "signal": str(signal.get("signal", "NO_SIGNAL")),
+        "direction": str(
+            signal.get("direction", "UNKNOWN")
+        ).upper(),
+        "confidence_index": safe_float(
+            signal.get("confidence_index")
+        ),
+        "risk_level": str(
+            signal.get("risk_level", "UNKNOWN")
+        ),
+        "agreement": str(
+            signal.get("agreement", "UNKNOWN")
+        ).upper(),
+        "forecast_price": safe_float(
+            signal.get("forecast_price")
+        ),
+        "expected_change_pct": safe_float(
+            signal.get("expected_change_pct")
+        ),
+        "range_low": safe_float(
+            signal.get("range_low")
+        ),
+        "range_high": safe_float(
+            signal.get("range_high")
+        ),
+        "spread": safe_float(
+            signal.get("spread")
+        ),
+        "models": signal.get("models", []),
+    }
+    
 def build_intelligence() -> IntelligenceResult:
+    # ---------------------------------------------------------
+    # 30-DAY = canonical intelligence horizon
+    # ---------------------------------------------------------
     signal = load_signal_context()
+
+    # ---------------------------------------------------------
+    # 7-DAY = separate forecast horizon
+    # ---------------------------------------------------------
+    try:
+        signal_7 = asdict(build_signal("7"))
+    except Exception:
+        signal_7 = None
 
     with get_connection() as conn:
         with conn.cursor() as cur:
+
             observation_date, latest_price = load_latest_target(cur)
-            signal_date = parse_date(signal.get("latest_date"))
+
+            # -----------------------------
+            # Validate 30-day alignment
+            # -----------------------------
+            signal_date = parse_date(
+                signal.get("latest_date")
+            )
 
             if signal_date is None:
-                raise RuntimeError("Signal engine returned an invalid latest date.")
+                raise RuntimeError(
+                    "Signal engine returned an invalid latest date."
+                )
 
             if signal_date != observation_date:
                 raise RuntimeError(
                     "Signal/model context is not aligned with the latest "
-                    f"{TARGET} observation: signal={signal_date}, "
+                    f"{TARGET} observation: "
+                    f"signal={signal_date}, "
                     f"database={observation_date}."
                 )
 
-            fx = load_fx_context(cur, observation_date)
-            weather = load_weather_context(cur, observation_date)
-            news = load_news_context(cur, observation_date)
+            # -----------------------------
+            # Validate 7-day alignment
+            # -----------------------------
+            if signal_7 is not None:
+                signal_7_date = parse_date(
+                    signal_7.get("latest_date")
+                )
 
-    drivers, cautions = build_drivers(signal, fx, weather, news)
+                if signal_7_date != observation_date:
+                    signal_7 = None
 
-    expected_change = safe_float(signal.get("expected_change_pct"))
-    direction = str(signal.get("direction", "UNKNOWN")).upper()
-    agreement = str(signal.get("agreement", "UNKNOWN")).upper()
+            # -----------------------------
+            # Market context
+            # -----------------------------
+            fx = load_fx_context(
+                cur,
+                observation_date,
+            )
+
+            weather = load_weather_context(
+                cur,
+                observation_date,
+            )
+
+            news = load_news_context(
+                cur,
+                observation_date,
+            )
+
+    # ---------------------------------------------------------
+    # Drivers and cautions use the canonical 30-day signal
+    # ---------------------------------------------------------
+    drivers, cautions = build_drivers(
+        signal,
+        fx,
+        weather,
+        news,
+    )
+
+    # ---------------------------------------------------------
+    # 30-DAY VALUES
+    # ---------------------------------------------------------
+    expected_change = safe_float(
+        signal.get("expected_change_pct")
+    )
+
+    direction = str(
+        signal.get("direction", "UNKNOWN")
+    ).upper()
+
+    agreement = str(
+        signal.get("agreement", "UNKNOWN")
+    ).upper()
 
     market_state = classify_market_state(
         expected_change,
@@ -408,49 +536,201 @@ def build_intelligence() -> IntelligenceResult:
         agreement,
     )
 
-    if str(signal.get("risk_level", "")).upper() == "HIGH":
+    if str(
+        signal.get("risk_level", "")
+    ).upper() == "HIGH":
+
         intelligence_state = "CAUTION"
+
     elif agreement == "MODEL_DISAGREEMENT":
+
         intelligence_state = "MIXED_EVIDENCE"
+
     elif signal.get("signal") in {"BUY", "SELL"}:
+
         intelligence_state = "ACTIONABLE_EVIDENCE"
+
     else:
+
         intelligence_state = "WATCH"
 
-    nigeria_price_ngn, nigeria_forecast_ngn = calculate_nigeria_benchmark(
-        latest_price=latest_price,
-        expected_change=expected_change,
-        fx=fx,
+    # ---------------------------------------------------------
+    # NIGERIAN BENCHMARK
+    # ---------------------------------------------------------
+    nigeria_price_ngn, nigeria_forecast_ngn = (
+        calculate_nigeria_benchmark(
+            latest_price=latest_price,
+            expected_change=expected_change,
+            fx=fx,
+        )
     )
 
+    # ---------------------------------------------------------
+    # NORMALIZE BOTH HORIZONS
+    # ---------------------------------------------------------
+    ensemble_30 = normalize_ensemble(signal)
+    ensemble_7 = normalize_ensemble(signal_7)
+
+    # ---------------------------------------------------------
+    # 7-DAY VALUES
+    # ---------------------------------------------------------
+    if ensemble_7:
+
+        forecast_7_price = ensemble_7.get(
+            "forecast_price"
+        )
+
+        expected_change_7_pct = ensemble_7.get(
+            "expected_change_pct"
+        )
+
+        forecast_7_low = ensemble_7.get(
+            "range_low"
+        )
+
+        forecast_7_high = ensemble_7.get(
+            "range_high"
+        )
+
+        direction_7 = ensemble_7.get(
+            "direction",
+            "UNKNOWN",
+        )
+
+        model_agreement_7 = ensemble_7.get(
+            "agreement",
+            "UNKNOWN",
+        )
+
+        models_7 = ensemble_7.get(
+            "models",
+            [],
+        )
+
+    else:
+
+        forecast_7_price = None
+        expected_change_7_pct = None
+        forecast_7_low = None
+        forecast_7_high = None
+        direction_7 = "UNKNOWN"
+        model_agreement_7 = "UNKNOWN"
+        models_7 = []
+
+        cautions.append(
+            "7-trading-day ensemble forecast is currently unavailable."
+        )
+
+    # ---------------------------------------------------------
+    # RETURN COMPLETE INTELLIGENCE OBJECT
+    # ---------------------------------------------------------
     return IntelligenceResult(
+
+        # Core
         target=TARGET,
         observation_date=str(observation_date),
-        latest_price=round(latest_price, 2),
-        signal=str(signal.get("signal", "NO_SIGNAL")),
-        direction=direction,
-        confidence_index=round(
-            safe_float(signal.get("confidence_index"), 0.0) or 0.0,
+        latest_price=round(
+            latest_price,
             2,
         ),
-        risk_level=str(signal.get("risk_level", "UNKNOWN")),
+
+        # 30-day canonical intelligence
+        signal=str(
+            signal.get(
+                "signal",
+                "NO_SIGNAL",
+            )
+        ),
+
+        direction=direction,
+
+        confidence_index=round(
+            safe_float(
+                signal.get(
+                    "confidence_index"
+                ),
+                0.0,
+            ) or 0.0,
+            2,
+        ),
+
+        risk_level=str(
+            signal.get(
+                "risk_level",
+                "UNKNOWN",
+            )
+        ),
+
         model_agreement=agreement,
-        forecast_price=safe_float(signal.get("forecast_price")),
+
+        forecast_price=safe_float(
+            signal.get(
+                "forecast_price"
+            )
+        ),
+
         expected_change_pct=(
-            round(expected_change, 2)
+            round(
+                expected_change,
+                2,
+            )
             if expected_change is not None
             else None
         ),
-        forecast_low=safe_float(signal.get("range_low")),
-        forecast_high=safe_float(signal.get("range_high")),
+
+        forecast_low=safe_float(
+            signal.get(
+                "range_low"
+            )
+        ),
+
+        forecast_high=safe_float(
+            signal.get(
+                "range_high"
+            )
+        ),
+
+        # 7-day forecast
+        forecast_7_price=forecast_7_price,
+
+        expected_change_7_pct=(
+            round(
+                expected_change_7_pct,
+                2,
+            )
+            if expected_change_7_pct is not None
+            else None
+        ),
+
+        forecast_7_low=forecast_7_low,
+
+        forecast_7_high=forecast_7_high,
+
+        direction_7=direction_7,
+
+        model_agreement_7=model_agreement_7,
+
+        models_7=models_7,
+
+        # Context
         fx_context=fx,
         weather_context=weather,
         news_context=news,
+
+        # Intelligence
         market_state=market_state,
         intelligence_state=intelligence_state,
+
         drivers=drivers,
         cautions=cautions,
-        models=signal.get("models", []),
+
+        # Models
+        models=signal.get(
+            "models",
+            [],
+        ),
+
+        # Integrity
         data_integrity={
             "canonical_target_only": True,
             "mixed_contracts": False,
@@ -458,10 +738,24 @@ def build_intelligence() -> IntelligenceResult:
             "random_shuffling": False,
             "future_leakage": False,
             "sentiment_fabricated": False,
-            "nigeria_benchmark_derived_from_fx": nigeria_price_ngn is not None,
+            "nigeria_benchmark_derived_from_fx": (
+                nigeria_price_ngn is not None
+            ),
+            "seven_day_ensemble_available": (
+                ensemble_7 is not None
+            ),
+            "thirty_day_ensemble_available": (
+                ensemble_30 is not None
+            ),
         },
+
+        # Nigeria
         nigeria_price_ngn=nigeria_price_ngn,
         nigeria_forecast_ngn=nigeria_forecast_ngn,
+
+        # Full ensemble objects
+        ensemble_7=ensemble_7,
+        ensemble_30=ensemble_30,
     )
 
 

@@ -12,7 +12,7 @@ from math import isfinite
 from typing import Dict, Optional
 import time
 
-from backend.model_ensemble import build_all
+from backend.database.connection import get_connection
 
 TARGET = "ICCO-DAILY-USD"
 UNIT = "USD/tonne"
@@ -44,12 +44,31 @@ def _normalise_ensemble(result: dict) -> dict:
 
 
 def _context() -> dict:
+    """Read the latest persisted ensemble from PostgreSQL."""
     global _CONTEXT_CACHE, _CONTEXT_TIME
 
     now = time.monotonic()
 
     if _CONTEXT_CACHE is None or now - _CONTEXT_TIME >= _CONTEXT_TTL_SECONDS:
-        results = build_all()
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT horizon, latest_date, result
+                    FROM ensemble_results
+                    ORDER BY horizon
+                    """
+                )
+                rows = cur.fetchall()
+
+        results = {str(row[0]): row[2] for row in rows}
+
+        if "30" not in results:
+            raise RuntimeError(
+                "No persisted 30-day ensemble result found. "
+                "Run the automatic refresh first."
+            )
+
         horizon_30 = results["30"]
 
         metrics = {
@@ -65,7 +84,7 @@ def _context() -> dict:
             "latest_date": horizon_30["latest_date"],
             "latest_price": float(horizon_30["latest_price"]),
             "ensemble": {
-                "7": _normalise_ensemble(results["7"]),
+                "7": _normalise_ensemble(results.get("7", {})),
                 "30": _normalise_ensemble(horizon_30),
             },
             "metrics": metrics,

@@ -1,15 +1,16 @@
 import os
+import time
 import streamlit as st
 import requests
 import pandas as pd
 
 # ============================================================
-# COCOA INTELLIGENCE HUB — STREAMLIT COMMAND CENTER
+# COCOA INTELLIGENCE HUB — STREAMLIT COMMAND CENTER V2
 # ============================================================
 
 API_BASE = os.getenv("API_BASE", "http://127.0.0.1:8000")
+AUTO_REFRESH_SECONDS = int(os.getenv("COCOA_REFRESH_SECONDS", "300"))
 
-# IMPORTANT: This must be the FIRST Streamlit command in the file.
 st.set_page_config(
     page_title="Cocoa Intelligence Hub",
     page_icon="file_0000000090e881f49f628ec095ce682d.png",
@@ -18,126 +19,160 @@ st.set_page_config(
 )
 
 # ============================================================
-# COCOA THEME
+# COCOA THEME — CHOCOLATE V2
 # ============================================================
 
 st.markdown(
     """
 <style>
-/* Main application */
 .stApp {
-    background: #f7f1e8;
-    color: #241812;
+    background: #3b2118;
+    color: #fff8f1;
 }
 
-/* General text */
 .stApp, .stApp p, .stApp label, .stApp span {
-    color: #241812;
+    color: #fff8f1;
 }
 
-/* Hero */
 .hero {
-    background: linear-gradient(135deg, #4a2416 0%, #7a3f22 55%, #b36a2c 100%);
+    background: linear-gradient(135deg, #24120d 0%, #5a2b19 52%, #8b4a25 100%);
     color: #ffffff;
-    border-radius: 20px;
-    padding: 1.7rem 2rem;
-    margin-bottom: 1.4rem;
-    border: 1px solid #6b351f;
-    box-shadow: 0 8px 24px rgba(74, 36, 22, .16);
+    border-radius: 22px;
+    padding: 2rem 2.2rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #9b5a31;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
 }
+
 .hero * {
     color: #ffffff !important;
 }
+
 .hero-title {
-    font-size: 2.1rem;
+    font-size: 2.35rem;
     font-weight: 850;
 }
 
-/* Cards */
 .panel {
-    background: #fffdf9;
+    background: #fffaf4;
     color: #241812;
-    border: 1px solid #dfcdb9;
-    border-radius: 18px;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 4px 14px rgba(74, 36, 22, .06);
+    border: 1px solid #d8b99e;
+    border-radius: 20px;
+    padding: 1.5rem 1.7rem;
+    margin-bottom: 1.1rem;
+    box-shadow: 0 7px 20px rgba(0, 0, 0, .16);
 }
-.panel h1, .panel h2, .panel h3, .panel h4, .panel p {
+
+.panel h1, .panel h2, .panel h3, .panel h4,
+.panel p, .panel span, .panel label {
     color: #241812 !important;
 }
 
-/* Metrics */
 [data-testid="stMetric"] {
-    background: #fffdf9;
-    border: 1px solid #dfcdb9;
-    border-radius: 16px;
-    padding: 1rem 1.25rem;
-    box-shadow: 0 4px 14px rgba(74, 36, 22, .05);
+    background: #fffaf4;
+    color: #241812;
+    border: 1px solid #d8b99e;
+    border-radius: 18px;
+    padding: 1.15rem 1.05rem;
+    min-height: 138px;
+    box-shadow: 0 7px 20px rgba(0, 0, 0, .16);
 }
+
 [data-testid="stMetricLabel"] {
-    color: #6b4a38 !important;
-    font-weight: 700;
-}
-[data-testid="stMetricValue"] {
-    color: #4a2416 !important;
-    font-weight: 850;
-}
-
-/* Section labels */
-.section-label {
-    color: #7a3f22 !important;
-    font-size: .82rem;
-    font-weight: 850;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    margin: 1.2rem 0 .7rem;
-}
-
-/* Buttons */
-.stButton > button {
-    background: #7a3f22;
-    color: #ffffff !important;
-    border: 0;
-    border-radius: 12px;
+    color: #6b4632 !important;
+    font-size: 0.78rem !important;
+    line-height: 1.15 !important;
     font-weight: 750;
 }
+
+[data-testid="stMetricValue"] {
+    color: #4a2416 !important;
+    font-size: 1.28rem !important;
+    line-height: 1.15 !important;
+    font-weight: 850;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+[data-testid="stMetricDelta"] {
+    font-size: 0.82rem !important;
+    line-height: 1.15 !important;
+}
+
+.section-label {
+    color: #f0b77c !important;
+    font-size: .85rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin: 1.25rem 0 .8rem;
+}
+
+.stButton > button {
+    background: #8b4a25;
+    color: #ffffff !important;
+    border: 1px solid #b66b3c;
+    border-radius: 13px;
+    font-weight: 750;
+    min-height: 44px;
+}
+
 .stButton > button:hover {
-    background: #5f2e1c;
+    background: #a85a2b;
     color: #ffffff !important;
 }
 
-/* Sidebar */
 section[data-testid="stSidebar"] {
-    background: #efe2d3;
+    background: #2b1711;
 }
+
 section[data-testid="stSidebar"] * {
+    color: #fff4eb !important;
+}
+
+button[data-baseweb="tab"] {
+    color: #f0d0b5 !important;
+    font-weight: 750;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    color: #f0b77c !important;
+}
+
+[data-testid="stDataFrame"] {
+    border: 1px solid #d8b99e;
+    border-radius: 13px;
+}
+
+.stAlert {
+    border-radius: 13px;
+}
+
+[data-testid="stExpander"] {
+    border-color: #b98767;
+    border-radius: 14px;
+}
+
+div[data-testid="stCaptionContainer"] p {
+    color: #d9bca8 !important;
+}
+
+.news-card {
+    background: #fffaf4;
+    color: #241812;
+    border: 1px solid #d8b99e;
+    border-radius: 16px;
+    padding: 1rem 1.15rem;
+    margin-bottom: .8rem;
+}
+
+.news-card * {
     color: #241812 !important;
 }
 
-/* Tabs */
-button[data-baseweb="tab"] {
-    color: #5f3a28 !important;
-    font-weight: 700;
-}
-button[data-baseweb="tab"][aria-selected="true"] {
-    color: #7a3f22 !important;
-}
-
-/* Tables */
-[data-testid="stDataFrame"] {
-    border: 1px solid #dfcdb9;
-    border-radius: 12px;
-}
-
-/* Hide Streamlit chrome */
 #MainMenu, footer {
     visibility: hidden;
-}
-
-/* Alerts */
-.stAlert {
-    border-radius: 12px;
 }
 </style>
 """,
@@ -148,7 +183,7 @@ button[data-baseweb="tab"][aria-selected="true"] {
 # HELPERS
 # ============================================================
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=AUTO_REFRESH_SECONDS, show_spinner=False)
 def get_json(endpoint):
     try:
         response = requests.get(
@@ -222,6 +257,61 @@ def show_error(label, value):
     return False
 
 
+def as_number(value):
+    try:
+        return float(value)
+    except Exception:
+        return None
+
+
+def country_key(item):
+    text = " ".join(
+        str(item.get(k, ""))
+        for k in ("country", "country_name", "region", "title", "description", "source")
+    ).lower()
+
+    if "nigeria" in text or "naira" in text:
+        return "Nigeria"
+    if "ghana" in text:
+        return "Ghana"
+    if "côte d'ivoire" in text or "cote d'ivoire" in text or "ivory coast" in text:
+        return "Côte d’Ivoire"
+    if "cameroon" in text:
+        return "Cameroon"
+    return "Other"
+
+
+def news_items_for_country(items, country):
+    matches = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if country_key(item) == country:
+            matches.append(item)
+    return matches
+
+
+def render_news_item(item):
+    title = item.get("title", "Untitled")
+    url = item.get("url")
+    source = item.get("source")
+    published = item.get("published_at") or item.get("published") or item.get("date")
+
+    if url:
+        st.markdown(f"**[{title}]({url})**")
+    else:
+        st.markdown(f"**{title}**")
+
+    metadata = []
+    if source:
+        metadata.append(str(source))
+    if published:
+        metadata.append(str(published))
+
+    if metadata:
+        st.caption(" • ".join(metadata))
+
+
 # ============================================================
 # SIDEBAR
 # ============================================================
@@ -234,6 +324,12 @@ with st.sidebar:
     if st.button("↻ Refresh intelligence", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+
+    st.markdown("### Automatic refresh")
+    st.caption(
+        f"Live API data refreshes automatically every "
+        f"{AUTO_REFRESH_SECONDS // 60} minute(s)."
+    )
 
     st.markdown("### Live architecture")
     st.markdown("**PostgreSQL → ML Engine → FastAPI → Streamlit**")
@@ -265,6 +361,17 @@ with st.sidebar:
 
 
 # ============================================================
+# AUTOMATIC REFRESH
+# ============================================================
+
+now = time.time()
+last_refresh = st.session_state.get("_last_auto_refresh", 0)
+
+if now - last_refresh >= AUTO_REFRESH_SECONDS:
+    st.session_state["_last_auto_refresh"] = now
+    st.cache_data.clear()
+
+# ============================================================
 # MARKET INTELLIGENCE API
 # ============================================================
 
@@ -283,44 +390,78 @@ if not isinstance(intel, dict):
     st.error("Unexpected /market-intelligence response.")
     st.stop()
 
-
 # ============================================================
 # CORE VALUES
 # ============================================================
 
 latest = intel.get("latest_price")
-forecast = intel.get("forecast_price")
-change = intel.get("expected_change_pct")
+forecast_7 = intel.get("forecast_7_price")
+change_7 = intel.get("expected_change_7_pct")
+forecast_30 = intel.get("forecast_price")
+change_30 = intel.get("expected_change_pct")
+
+ensemble = intel.get("ensemble", {})
+ensemble_7 = ensemble.get("7", {}) if isinstance(ensemble, dict) else {}
+ensemble_30 = ensemble.get("30", {}) if isinstance(ensemble, dict) else {}
+
+forecast_7 = first(
+    forecast_7,
+    ensemble_7.get("ensemble_forecast"),
+    ensemble_7.get("forecast"),
+    default=None,
+)
+change_7 = first(
+    change_7,
+    ensemble_7.get("ensemble_expected_change_pct"),
+    default=None,
+)
+direction_7 = first(
+    ensemble_7.get("ensemble_direction"),
+    ensemble_7.get("direction"),
+    default="—",
+)
+
+forecast_30 = first(
+    forecast_30,
+    ensemble_30.get("ensemble_forecast"),
+    ensemble_30.get("forecast"),
+    default=None,
+)
+change_30 = first(
+    change_30,
+    ensemble_30.get("ensemble_expected_change_pct"),
+    default=None,
+)
+direction_30 = first(
+    ensemble_30.get("ensemble_direction"),
+    ensemble_30.get("direction"),
+    default="—",
+)
+
+forecast = forecast_30
+change = change_30
 low = intel.get("forecast_low")
 high = intel.get("forecast_high")
 confidence = intel.get("confidence_index")
 
-risk = first(
-    intel.get("risk_level"),
-    intel.get("risk"),
-)
-
+risk = first(intel.get("risk_level"), intel.get("risk"))
 direction = first(
     intel.get("ensemble_direction"),
     intel.get("direction"),
     intel.get("market_direction"),
 )
-
 agreement = first(
     intel.get("model_agreement"),
     intel.get("agreement"),
 )
-
 signal = first(
     intel.get("signal"),
     intel.get("market_signal"),
 )
-
 market_state = first(
     intel.get("market_state"),
     intel.get("market"),
 )
-
 horizon = first(
     intel.get("horizon"),
     intel.get("forecast_horizon"),
@@ -330,18 +471,51 @@ horizon = first(
 models = intel.get("models", [])
 
 xgb = model_value(models, ["xgboost", "xgb"])
-rf = model_value(
-    models,
-    ["random forest", "random_forest", "randomforest", "rf"],
-)
-ts = model_value(
-    models,
-    ["time-series", "time_series", "timeseries", "time series"],
+rf = model_value(models, ["random forest", "random_forest", "randomforest", "rf"])
+ts = model_value(models, ["time-series", "time_series", "timeseries", "time series"])
+
+nigeria_price = as_number(intel.get("nigeria_price_ngn"))
+nigeria_forecast_30 = as_number(intel.get("nigeria_forecast_ngn"))
+
+# Optional top-level Nigerian 7-day fields if/when the API provides them.
+nigeria_forecast_7 = as_number(
+    first(
+        intel.get("nigeria_forecast_7_ngn"),
+        intel.get("nigeria_7_day_forecast_ngn"),
+        intel.get("nigeria_forecast_7"),
+        default=None,
+    )
 )
 
-# Nigerian benchmark and forecast returned by FastAPI.
-nigeria_price = intel.get("nigeria_price_ngn")
-nigeria_forecast = intel.get("nigeria_forecast_ngn")
+nigeria_change_7 = as_number(
+    first(
+        intel.get("nigeria_expected_change_7_pct"),
+        intel.get("nigeria_forecast_7_change_pct"),
+        intel.get("nigeria_7_day_change_pct"),
+        default=None,
+    )
+)
+
+nigeria_change_30 = as_number(
+    first(
+        intel.get("nigeria_expected_change_30_pct"),
+        intel.get("nigeria_forecast_30_change_pct"),
+        intel.get("nigeria_30_day_change_pct"),
+        default=None,
+    )
+)
+
+# If the backend has not yet exposed separate Nigerian 7-day fields,
+# derive a transparent 7-day Nigerian estimate from the international
+# 7-day move and current Nigerian benchmark.
+if nigeria_forecast_7 is None and nigeria_price is not None and as_number(change_7) is not None:
+    nigeria_forecast_7 = nigeria_price * (1 + float(change_7) / 100)
+
+if nigeria_change_7 is None and nigeria_price is not None and nigeria_forecast_7 is not None:
+    nigeria_change_7 = ((nigeria_forecast_7 / nigeria_price) - 1) * 100
+
+if nigeria_change_30 is None and nigeria_price is not None and nigeria_forecast_30 is not None:
+    nigeria_change_30 = ((nigeria_forecast_30 / nigeria_price) - 1) * 100
 
 
 # ============================================================
@@ -352,7 +526,7 @@ st.markdown(
     """
 <div class="hero">
     <div><b>● LIVE INTELLIGENCE ENGINE</b></div>
-    <div class="hero-title">Cocoa Intelligence Hub</div>
+    <div class="hero-title">🍫 Cocoa Intelligence Hub</div>
     <div>
         Evidence-based market intelligence for cocoa traders,
         exporters and researchers.
@@ -372,36 +546,34 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-a, b, c, d = st.columns(4)
+a, b, c, d, e = st.columns(5)
 
-a.metric(
-    "Latest ICCO Price",
-    f"${fmt_num(latest)}",
-)
-
+a.metric("Latest ICCO Price", f"${fmt_num(latest)}")
 b.metric(
-    "30-Day Ensemble",
-    f"${fmt_num(forecast)}",
+    "7-Day Forecast",
+    f"${fmt_num(forecast_7)}",
+    fmt_pct(change_7),
 )
-
 c.metric(
-    "Expected Change",
-    fmt_pct(change),
+    "30-Day Forecast",
+    f"${fmt_num(forecast_30)}",
+    fmt_pct(change_30),
 )
-
-d.metric(
+d.metric("Expected Change", fmt_pct(change_30))
+e.metric(
     "Confidence",
     f"{fmt_num(confidence, 0)}/100"
     if confidence is not None
     else "—",
 )
 
-a, b, c, d = st.columns(4)
+a, b, c, d, e = st.columns(5)
 
 a.metric("Direction", direction)
 b.metric("Risk", risk)
 c.metric("Market State", market_state)
 d.metric("Signal", signal)
+e.metric("Model Agreement", agreement)
 
 
 # ============================================================
@@ -429,58 +601,61 @@ with tab_market:
         unsafe_allow_html=True,
     )
 
+    mh1, mh2 = st.columns(2)
+
+    with mh1:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown("### 7-Day International Forecast")
+
+        x, y = st.columns(2)
+        x.metric("Forecast", f"${fmt_num(forecast_7)}")
+        y.metric("Expected Change", fmt_pct(change_7))
+
+        st.write(f"**Direction:** {direction_7}")
+        st.write("**Horizon:** 7 trading days")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with mh2:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown("### 30-Day International Forecast")
+
+        x, y = st.columns(2)
+        x.metric("Forecast", f"${fmt_num(forecast_30)}")
+        y.metric("Expected Change", fmt_pct(change_30))
+
+        st.write(f"**Direction:** {direction_30}")
+        st.write(f"**Horizon:** {horizon}")
+        st.markdown("</div>", unsafe_allow_html=True)
+
     left, right = st.columns([1.05, 1])
 
     with left:
-        st.markdown(
-            '<div class="panel">',
-            unsafe_allow_html=True,
-        )
-
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
         st.markdown("### Forecast Range")
 
         p, q = st.columns(2)
-
-        p.metric(
-            "Lower Bound",
-            f"${fmt_num(low)}",
-        )
-
-        q.metric(
-            "Upper Bound",
-            f"${fmt_num(high)}",
-        )
+        p.metric("Lower Bound", f"${fmt_num(low)}")
+        q.metric("Upper Bound", f"${fmt_num(high)}")
 
         st.write(f"**Horizon:** {horizon}")
         st.write(f"**Model agreement:** {agreement}")
 
-        if (
-            low is not None
-            and high is not None
-            and forecast is not None
-        ):
+        if low is not None and high is not None and forecast is not None:
             st.bar_chart(
                 pd.DataFrame(
                     {"Price": [low, forecast, high]},
                     index=["Lower", "Ensemble", "Upper"],
                 ),
-                height=260,
+                height=280,
             )
 
         st.markdown("</div>", unsafe_allow_html=True)
 
     with right:
-        st.markdown(
-            '<div class="panel">',
-            unsafe_allow_html=True,
-        )
-
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
         st.markdown("### Intelligence Drivers")
 
-        drivers = intel.get(
-            "drivers",
-            intel.get("key_drivers", []),
-        )
+        drivers = intel.get("drivers", intel.get("key_drivers", []))
 
         if isinstance(drivers, list) and drivers:
             for item in drivers:
@@ -494,10 +669,7 @@ with tab_market:
 
         cautions = intel.get(
             "cautions",
-            intel.get(
-                "risks",
-                intel.get("warnings", []),
-            ),
+            intel.get("risks", intel.get("warnings", [])),
         )
 
         if isinstance(cautions, list) and cautions:
@@ -565,12 +737,10 @@ with tab_context:
     )
 
     st.markdown("### 🍫 International Cocoa Market")
-
     prices = get_json("/prices")
 
     if not show_error("Price feed unavailable", prices):
         price_rows = rows_from(prices)
-
         if price_rows:
             st.dataframe(
                 pd.DataFrame(price_rows),
@@ -579,7 +749,6 @@ with tab_context:
             )
 
     st.markdown("### 💱 Foreign Exchange")
-
     fx = get_json("/fx")
 
     if not show_error("FX feed unavailable", fx):
@@ -598,14 +767,10 @@ with tab_context:
                         {
                             "Pair": pair,
                             "Rate": item.get("rate"),
-                            "Date": item.get(
-                                "rate_date",
-                                item.get("date", "—"),
-                            ),
+                            "Date": item.get("rate_date", item.get("date", "—")),
                             "Source": item.get("source", "—"),
                         }
                     )
-
         elif isinstance(items, list):
             for item in items:
                 if isinstance(item, dict):
@@ -616,10 +781,7 @@ with tab_context:
                                 f"{item.get('quote_currency', '—')}"
                             ),
                             "Rate": item.get("rate"),
-                            "Date": item.get(
-                                "rate_date",
-                                item.get("date", "—"),
-                            ),
+                            "Date": item.get("rate_date", item.get("date", "—")),
                             "Source": item.get("source", "—"),
                         }
                     )
@@ -634,7 +796,6 @@ with tab_context:
             st.info("No FX pairs returned.")
 
     st.markdown("### 🌦️ Weather & Crop-Risk Context")
-
     weather = get_json("/weather")
 
     if not show_error("Weather feed unavailable", weather):
@@ -643,7 +804,6 @@ with tab_context:
             if isinstance(weather, dict)
             else []
         )
-
         forecasts = (
             weather.get("forecasts", [])
             if isinstance(weather, dict)
@@ -652,9 +812,7 @@ with tab_context:
 
         st.metric(
             "Weather Records",
-            len(observations)
-            if isinstance(observations, list)
-            else 0,
+            len(observations) if isinstance(observations, list) else 0,
         )
 
         if isinstance(forecasts, list) and forecasts:
@@ -677,40 +835,38 @@ with tab_nigeria:
 
     st.markdown("### 🇳🇬 Nigerian Cocoa Price Intelligence")
 
-    n1, n2, n3 = st.columns(3)
+    n1, n2, n3, n4, n5 = st.columns(5)
 
     n1.metric(
-        "Estimated Nigeria Price",
-        (
-            f"₦{fmt_num(nigeria_price)}"
-            if nigeria_price is not None
-            else "—"
-        ),
+        "Current Benchmark",
+        f"₦{fmt_num(nigeria_price)}" if nigeria_price is not None else "—",
     )
 
     n2.metric(
-        "Nigeria Cocoa Forecast",
-        (
-            f"₦{fmt_num(nigeria_forecast)}"
-            if nigeria_forecast is not None
-            else "—"
-        ),
+        "7-Day Forecast",
+        f"₦{fmt_num(nigeria_forecast_7)}"
+        if nigeria_forecast_7 is not None
+        else "—",
+        fmt_pct(nigeria_change_7),
     )
 
-    if (
-        nigeria_price is not None
-        and nigeria_forecast is not None
-    ):
-        nigeria_change = (
-            (float(nigeria_forecast) / float(nigeria_price)) - 1
-        ) * 100
+    n3.metric(
+        "7-Day Change",
+        fmt_pct(nigeria_change_7),
+    )
 
-        n3.metric(
-            "Forecast Change",
-            f"{nigeria_change:+.2f}%",
-        )
-    else:
-        n3.metric("Forecast Change", "—")
+    n4.metric(
+        "30-Day Forecast",
+        f"₦{fmt_num(nigeria_forecast_30)}"
+        if nigeria_forecast_30 is not None
+        else "—",
+        fmt_pct(nigeria_change_30),
+    )
+
+    n5.metric(
+        "30-Day Change",
+        fmt_pct(nigeria_change_30),
+    )
 
     st.markdown(
         '<div class="panel">',
@@ -720,81 +876,88 @@ with tab_nigeria:
     st.markdown("#### Nigerian Benchmark")
 
     st.markdown(
-        (
-            f"### ₦{fmt_num(nigeria_price)}"
-            if nigeria_price is not None
-            else "### —"
-        )
+        f"### ₦{fmt_num(nigeria_price)}"
+        if nigeria_price is not None
+        else "### —"
     )
 
     st.write("Estimated Nigerian cocoa benchmark per tonne.")
-
     st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown(
-        '<div class="panel">',
-        unsafe_allow_html=True,
-    )
+    p1, p2 = st.columns(2)
 
-    st.markdown("#### Nigerian Forecast")
-
-    st.markdown(
-        (
-            f"### ₦{fmt_num(nigeria_forecast)}"
-            if nigeria_forecast is not None
+    with p1:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown("#### 🇳🇬 7-Day Nigerian Forecast")
+        st.markdown(
+            f"### ₦{fmt_num(nigeria_forecast_7)}"
+            if nigeria_forecast_7 is not None
             else "### —"
         )
-    )
+        st.write(f"Expected change: **{fmt_pct(nigeria_change_7)}**")
+        st.write("Horizon: **7 trading days**")
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.write(f"Forecast horizon: {horizon}")
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    with p2:
+        st.markdown('<div class="panel">', unsafe_allow_html=True)
+        st.markdown("#### 🇳🇬 30-Day Nigerian Forecast")
+        st.markdown(
+            f"### ₦{fmt_num(nigeria_forecast_30)}"
+            if nigeria_forecast_30 is not None
+            else "### —"
+        )
+        st.write(f"Expected change: **{fmt_pct(nigeria_change_30)}**")
+        st.write(f"Horizon: **{horizon}**")
+        st.markdown("</div>", unsafe_allow_html=True)
 
     st.caption(
         "The Nigerian estimate and forecast are generated automatically "
         "from the international cocoa benchmark and current FX context."
     )
-st.markdown("### 🌍 Regional Cocoa News")
-st.caption("Nigeria 🇳🇬 · Ghana 🇬🇭 · Côte d’Ivoire 🇨🇮 · Cameroon 🇨🇲")
 
-news = get_json("/news")
+    # --------------------------------------------------------
+    # REGIONAL NEWS
+    # --------------------------------------------------------
 
-if not show_error("Regional news feed unavailable", news):
-    nr = rows_from(news)
+    st.markdown("### 🌍 Regional Cocoa News")
+    st.caption("Nigeria 🇳🇬 · Ghana 🇬🇭 · Côte d’Ivoire 🇨🇮 · Cameroon 🇨🇲")
 
-    if nr:
-        for item in nr[:20]:
-            if not isinstance(item, dict):
-                continue
+    news = get_json("/news")
 
-            title = item.get("title", "Untitled")
-            url = item.get("url")
-            country = item.get("country") or item.get("country_name")
-            source = item.get("source")
+    if not show_error("Regional news feed unavailable", news):
+        nr = rows_from(news)
 
-            st.markdown(
-                f"**[{title}]({url})**"
-                if url
-                else f"**{title}**"
-            )
+        countries = [
+            ("Nigeria", "🇳🇬"),
+            ("Ghana", "🇬🇭"),
+            ("Côte d’Ivoire", "🇨🇮"),
+            ("Cameroon", "🇨🇲"),
+        ]
 
-            metadata = []
+        grouped = {
+            country: news_items_for_country(nr, country)
+            for country, _ in countries
+        }
 
-            if country:
-                metadata.append(str(country))
+        # If the API already returns explicit country labels, use them.
+        # If it does not, retain the full feed in an "Other" bucket instead
+        # of incorrectly attributing stories to a country.
+        news_tabs = st.tabs([f"{flag} {country}" for country, flag in countries])
 
-            if source:
-                metadata.append(str(source))
+        for tab, (country, flag) in zip(news_tabs, countries):
+            with tab:
+                items = grouped[country][:8]
 
-            if item.get("published_at"):
-                metadata.append(str(item["published_at"]))
+                if items:
+                    for item in items:
+                        render_news_item(item)
+                        st.divider()
+                else:
+                    st.info(
+                        f"No country-specific {country} cocoa news record "
+                        "was returned by the current /news feed."
+                    )
 
-            if metadata:
-                st.caption(" • ".join(metadata))
-
-            st.divider()
-    else:
-        st.info("No regional cocoa news records returned.")
 
 # ============================================================
 # SYSTEM
@@ -812,20 +975,14 @@ with tab_system:
         st.markdown("### API Health")
         health = get_json("/health")
 
-        if not show_error(
-            "API health unavailable",
-            health,
-        ):
+        if not show_error("API health unavailable", health):
             st.json(health)
 
     with b:
         st.markdown("### Database Health")
         db = get_json("/db-health")
 
-        if not show_error(
-            "Database health unavailable",
-            db,
-        ):
+        if not show_error("Database health unavailable", db):
             st.json(db)
 
     a, b, c, d = st.columns(4)
@@ -835,9 +992,7 @@ with tab_system:
     c.metric("ML Engine", "Active")
     d.metric("Streamlit", "Online")
 
-    with st.expander(
-        "Raw /market-intelligence response"
-    ):
+    with st.expander("Raw /market-intelligence response"):
         st.json(data)
 
 

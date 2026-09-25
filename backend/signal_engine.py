@@ -60,6 +60,7 @@ class SignalResult:
 
     rationale: list[str]
     models: list[dict[str, Any]]
+    ensemble: dict[str, Any]
 
     # Explicit audit flags.
     chronological_evaluation: bool
@@ -272,7 +273,8 @@ def build_signal(horizon: str = "30") -> SignalResult:
         )
 
     item = ensemble[horizon]
-
+    models = item.get("models", [])
+ 
     latest_price = _safe_float(context["latest_price"])
     forecast_price = _safe_float(item.get("forecast"))
     expected_change = _safe_float(item.get("expected_change_pct"))
@@ -370,6 +372,7 @@ def build_signal(horizon: str = "30") -> SignalResult:
         spread=round(spread, 2) if spread is not None else None,
         rationale=rationale,
         models=models,
+        ensemble=context.get("ensemble", {}),
         chronological_evaluation=True,
         mixed_contracts=False,
         random_shuffling=False,

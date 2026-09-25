@@ -11,6 +11,10 @@ No random shuffling and no future leakage are introduced by this layer.
 
 from __future__ import annotations
 
+import json
+import os
+import psycopg2
+
 from dataclasses import asdict, dataclass
 from math import isfinite
 from pathlib import Path
@@ -427,6 +431,35 @@ def print_horizon(result: dict) -> None:
         print(f"Direction: {result['ensemble_direction']}")
 
 
+def _save_ensemble_results(results: dict) -> None:
+    """Persist completed ensemble results for the API."""
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is not set.")
+
+    with psycopg2.connect(database_url) as conn:
+        with conn.cursor() as cur:
+            for horizon, result in results.items():
+                cur.execute(
+                    """
+                    INSERT INTO ensemble_results
+                        (horizon, latest_date, result, updated_at)
+                    VALUES (%s, %s, %s::jsonb, NOW())
+                    ON CONFLICT (horizon)
+                    DO UPDATE SET
+                        latest_date = EXCLUDED.latest_date,
+                        result = EXCLUDED.result,
+                        updated_at = NOW()
+                    """,
+                    (
+                        str(horizon),
+                        result["latest_date"],
+                        json.dumps(result, default=str),
+                    ),
+                )
+
+    print("ENSEMBLE RESULTS SAVED TO POSTGRESQL")
+
 def main() -> None:
     print("=" * 70)
     print("COCOA INTELLIGENCE HUB")
@@ -439,6 +472,7 @@ def main() -> None:
     print()
 
     results = build_all()
+    _save_ensemble_results(results)
 
     for result in results.values():
         print_horizon(result)
