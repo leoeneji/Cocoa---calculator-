@@ -188,15 +188,55 @@ div[data-testid="stCaptionContainer"] p {
 
 @st.cache_data(ttl=AUTO_REFRESH_SECONDS, show_spinner=False)
 def get_json(endpoint):
-    try:
-        response = requests.get(
-            f"{API_BASE}{endpoint}",
-            timeout=180,
+    """
+    Fetch data from FastAPI with controlled retry handling for Render
+    cold starts and transient network/gateway errors.
+
+    The FastAPI backend itself is not changed. Streamlit simply waits
+    and retries when the API is temporarily unavailable while waking.
+    """
+    max_attempts = 4
+    request_timeout = 45
+    retry_delays = (0, 5, 10, 20)
+
+    last_error = None
+
+    for attempt in range(max_attempts):
+        try:
+            response = requests.get(
+                f"{API_BASE}{endpoint}",
+                timeout=request_timeout,
+            )
+
+            if response.status_code in (502, 503, 504):
+                last_error = (
+                    f"HTTP {response.status_code} from FastAPI "
+                    f"while requesting {endpoint}"
+                )
+                if attempt < max_attempts - 1:
+                    time.sleep(retry_delays[attempt + 1])
+                    continue
+
+            response.raise_for_status()
+            return response.json()
+
+        except requests.exceptions.RequestException as exc:
+            last_error = str(exc)
+            if attempt < max_attempts - 1:
+                time.sleep(retry_delays[attempt + 1])
+                continue
+            break
+
+        except Exception as exc:
+            last_error = str(exc)
+            break
+
+    return {
+        "_error": (
+            f"FastAPI is temporarily unavailable after {max_attempts} attempts. "
+            f"Render may still be waking the service. Last error: {last_error}"
         )
-        response.raise_for_status()
-        return response.json()
-    except Exception as exc:
-        return {"_error": str(exc)}
+    }
 
 
 def fmt_num(value, decimals=2):
@@ -381,7 +421,10 @@ if now - last_refresh >= AUTO_REFRESH_SECONDS:
 data = get_json("/market-intelligence")
 
 if show_error("FastAPI connection failed", data):
-    st.info("Keep FastAPI running on port 8000.")
+    st.info(
+        "The FastAPI service may be waking from Render sleep. "
+        "Refresh the dashboard in a moment if the service is still unavailable."
+    )
     st.stop()
 
 intel = data.get(
