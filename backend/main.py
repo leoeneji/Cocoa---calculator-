@@ -7,12 +7,14 @@ from pydantic import BaseModel
 from backend.database.connection import get_connection
 from backend.market_intelligence_engine import build_intelligence
 
+
 class FXRate(BaseModel):
     base_currency: str
     quote_currency: str
     rate: float
     rate_date: date
     source: str
+
 
 class CocoaPrice(BaseModel):
     contract: str
@@ -22,10 +24,10 @@ class CocoaPrice(BaseModel):
     timestamp: datetime
     source: str
 
+
 class MarketSnapshot(BaseModel):
     fx: list[FXRate]
     cocoa_prices: list[CocoaPrice]
-
 
 
 app = FastAPI(
@@ -71,7 +73,6 @@ def db_health():
             "database": "cocoa_intelligence",
             "status": "connected",
         }
-
     finally:
         conn.close()
 
@@ -139,6 +140,8 @@ def prices():
 
     finally:
         conn.close()
+
+
 @app.get("/fx", response_model=list[FXRate])
 def fx():
     conn = get_connection()
@@ -175,12 +178,14 @@ def fx():
     finally:
         conn.close()
 
+
 @app.get("/market-snapshot", response_model=MarketSnapshot)
 def market_snapshot():
     return {
         "fx": fx(),
-        "cocoa_prices": prices()
+        "cocoa_prices": prices(),
     }
+
 
 @app.get("/weather")
 def weather():
@@ -205,7 +210,7 @@ def weather():
 
             observation_rows = cur.fetchall()
 
-            # 7-day forecasts
+            # 7-day weather forecasts
             cur.execute("""
                 SELECT
                     location,
@@ -236,7 +241,6 @@ def weather():
                 }
                 for row in observation_rows
             ],
-
             "forecasts": [
                 {
                     "location": row[0],
@@ -255,6 +259,7 @@ def weather():
 
     finally:
         conn.close()
+
 
 @app.get("/signals")
 def signals():
@@ -314,7 +319,6 @@ def signals():
         conn.close()
 
 
-
 @app.get("/market-intelligence")
 def market_intelligence():
     """
@@ -326,7 +330,9 @@ def market_intelligence():
         raise HTTPException(
             status_code=500,
             detail=f"Market intelligence engine failed: {exc}",
-        )   
+        )
+
+
 @app.get("/news")
 def news():
     conn = get_connection()
@@ -358,5 +364,6 @@ def news():
 
     finally:
         conn.close()
+
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
