@@ -202,3 +202,10 @@ CREATE TABLE IF NOT EXISTS fx_rates (
     PRIMARY KEY (base_currency, quote_currency, rate_date)
 );
 
+
+CREATE TABLE IF NOT EXISTS ensemble_results (
+    horizon TEXT PRIMARY KEY,
+    latest_date DATE NOT NULL,
+    result JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
