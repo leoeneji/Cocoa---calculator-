@@ -68,6 +68,7 @@ def run(label: str, *args: str) -> None:
         )
 
 
+
 def main() -> None:
     """Run the complete automatic refresh pipeline."""
     ensure_ensemble_results_table()
@@ -86,11 +87,17 @@ def main() -> None:
         "backend.collectors.historical_fx",
     )
 
-    run(
-        "STEP 3 — REFRESH LIVE WEATHER DATA",
-        "-m",
-        "backend.collectors.weather",
-    )
+    try:
+        run(
+            "STEP 3 — REFRESH LIVE WEATHER DATA",
+            "-m",
+            "backend.collectors.weather",
+        )
+    except SystemExit as exc:
+        print(
+            f"WARNING: Weather refresh failed; "
+            f"continuing to ensemble: {exc}"
+        )
 
     run(
         "STEP 4 — REBUILD DYNAMIC MODEL ENSEMBLE",
@@ -100,7 +107,7 @@ def main() -> None:
 
     print("\n" + "=" * 70)
     print("COCOA INTELLIGENCE HUB AUTOMATIC REFRESH: PASSED")
-    print("ICCO, FX, weather, database, model forecasts, and ensemble are refreshed.")
+    print("ICCO, FX and ensemble refresh completed; weather may have failed.")
     print("=" * 70)
 
 
