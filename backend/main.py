@@ -334,6 +334,7 @@ def market_intelligence():
         )
 
 
+
 @app.get("/news")
 def news():
     conn = get_connection()
@@ -344,12 +345,21 @@ def news():
                 SELECT
                     a.title,
                     a.url,
-                    a.published_at
+                    a.published_at,
+                    COALESCE(c.name, 'Unknown'),
+                    COALESCE(c.code, ''),
+                    COALESCE(s.name, 'Unknown')
                 FROM articles a
-                JOIN sources s ON s.id = a.source_id
-                WHERE s.name = 'Nigeria CRIN'
+                LEFT JOIN sources s ON s.id = a.source_id
+                LEFT JOIN countries c ON c.id = a.country_id
+                WHERE s.name IN (
+                    'Nigeria CRIN',
+                    'Ghana COCOBOD',
+                    'Côte d’Ivoire Conseil Café-Cacao',
+                    'Cameroon ONCC'
+                )
                 ORDER BY a.published_at DESC NULLS LAST
-                LIMIT 20
+                LIMIT 80
             """)
 
             rows = cur.fetchall()
@@ -358,13 +368,17 @@ def news():
             {
                 "title": row[0],
                 "url": row[1],
-                "published_at": row[2],
+                "published_at": row[2].isoformat() if row[2] else None,
+                "country": row[3],
+                "country_code": row[4],
+                "source": row[5],
             }
             for row in rows
         ]
 
     finally:
         conn.close()
+
 
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
