@@ -105,21 +105,27 @@ def main() -> None:
         "backend.model_ensemble",
     )
 
+    
     news_collectors = [
-        ("Nigeria CRIN", "backend/collectors/crin.py"),
-        ("Ghana COCOBOD", "backend/collectors/cocobod.py"),
-        ("Côte d'Ivoire", "backend/collectors/cotedivoire.py"),
-        ("Cameroon ONCC", "backend/collectors/cameroon.py"),
+        ("Nigeria CRIN", "backend.collectors.crin"),
+        ("Ghana COCOBOD", "backend.collectors.cocobod"),
+        ("Côte d'Ivoire", "backend.collectors.cotedivoire"),
+        ("Cameroon ONCC", "backend.collectors.cameroon"),
     ]
 
-    for label, script in news_collectors:
+    for label, module in news_collectors:
         try:
-            run(f"STEP 5 — REFRESH NEWS: {label}", script)
+            run(
+                f"STEP 5 — REFRESH NEWS: {label}",
+                "-m",
+                module,
+            )
         except SystemExit as exc:
             print(
                 f"WARNING: {label} news refresh failed; "
                 f"continuing to the next collector: {exc}"
             )
+
 
     print("\n" + "=" * 70)
     print("COCOA INTELLIGENCE HUB AUTOMATIC REFRESH: PASSED")
