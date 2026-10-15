@@ -20,6 +20,54 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+def ensure_news_sources() -> None:
+    """Ensure all regional cocoa news sources exist in PostgreSQL."""
+    import os
+    import psycopg2
+
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is not set.")
+
+    sources = [
+        (
+            "Nigeria CRIN",
+            "https://crin.gov.ng/news/",
+            "public_page",
+        ),
+        (
+            "Ghana COCOBOD",
+            "https://cocobod.gh",
+            "public_page",
+        ),
+        (
+            "Côte d’Ivoire Conseil Café-Cacao",
+            "https://conseilcafecacao.ci/index.php",
+            "public_page",
+        ),
+        (
+            "Cameroon ONCC",
+            "https://www.oncc.cm/updates",
+            "public_page",
+        ),
+    ]
+
+    with psycopg2.connect(database_url) as conn:
+        with conn.cursor() as cur:
+            for name, website_url, source_type in sources:
+                cur.execute(
+                    """
+                    INSERT INTO sources
+                        (name, website_url, source_type)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (name) DO NOTHING;
+                    """,
+                    (name, website_url, source_type),
+                )
+
+    print("Regional cocoa news sources are ready.")
+
 PYTHON = Path(sys.executable)
 
 
@@ -105,6 +153,7 @@ def main() -> None:
         "backend.model_ensemble",
     )
 
+    ensure_news_sources()
     
     news_collectors = [
         ("Nigeria CRIN", "backend.collectors.crin"),
