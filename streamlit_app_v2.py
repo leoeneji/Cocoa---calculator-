@@ -307,11 +307,15 @@ def as_number(value):
         return None
 
 
+
 def country_key(item):
     text = " ".join(
         str(item.get(k, ""))
         for k in ("country", "country_name", "region", "title", "description", "source")
     ).lower()
+
+    # Normalize curly apostrophes so country matching is consistent.
+    text = text.replace("’", "'").replace("‘", "'")
 
     if "nigeria" in text or "naira" in text:
         return "Nigeria"
@@ -322,6 +326,7 @@ def country_key(item):
     if "cameroon" in text:
         return "Cameroon"
     return "Other"
+
 
 
 def news_items_for_country(items, country):
