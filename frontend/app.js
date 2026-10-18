@@ -484,142 +484,138 @@ async function loadSignals() {
 
 async function loadMarketIntelligence() {
   try {
-    const raw = await fetchJSON("/market-intelligence");
-    const intel = unwrapObject(raw, [
+    const response = await fetchJSON("/market-intelligence");
+    const intel = unwrapObject(response, [
       "intelligence",
       "market_intelligence",
       "data",
     ]);
-    const root = raw && typeof raw === "object" ? raw : {};
-    const ensemble = intel.ensemble || root.ensemble || {};
-    const h7 =
-      intel.ensemble_7 ||
-      root.ensemble_7 ||
-      ensemble["7"] ||
-      ensemble["7d"] ||
-      {};
-    const h30 =
-      intel.ensemble_30 ||
-      root.ensemble_30 ||
-      ensemble["30"] ||
-      ensemble["30d"] ||
-      {};
-    const first = (...vals) =>
-      vals.find((v) => v !== undefined && v !== null && v !== "");
-    const f7 = first(
+    const root = response && typeof response === "object" ? response : {};
+    const ens = intel.ensemble || root.ensemble || {};
+    const e7 =
+      intel.ensemble_7 || root.ensemble_7 || ens["7"] || ens["7d"] || {};
+    const e30 =
+      intel.ensemble_30 || root.ensemble_30 || ens["30"] || ens["30d"] || {};
+    const pick = (...v) => firstDefined(...v);
+
+    const f7 = pick(
       intel.forecast_7_price,
       intel.forecast_7,
-      h7.ensemble_forecast,
-      h7.forecast
+      e7.ensemble_forecast,
+      e7.forecast
     );
-    const c7 = first(
+    const c7 = pick(
       intel.expected_change_7_pct,
       intel.expected_change_7,
-      h7.ensemble_expected_change_pct,
-      h7.expected_change_pct
+      e7.ensemble_expected_change_pct,
+      e7.expected_change_pct
     );
-    const f30 = first(
+    const f30 = pick(
       intel.forecast_price,
       intel.forecast_30_price,
       intel.forecast_30,
-      h30.ensemble_forecast,
-      h30.forecast
+      e30.ensemble_forecast,
+      e30.forecast
     );
-    const c30 = first(
+    const c30 = pick(
       intel.expected_change_pct,
       intel.expected_change_30_pct,
       intel.expected_change_30,
-      h30.ensemble_expected_change_pct,
-      h30.expected_change_pct
+      e30.ensemble_expected_change_pct,
+      e30.expected_change_pct
     );
-    const direction = first(
-      h30.ensemble_direction,
-      h30.direction,
-      intel.ensemble_direction,
+    const direction = pick(
+      e30.ensemble_direction,
+      e30.direction,
       intel.direction,
       intel.market_direction
     );
 
-    // Populate the existing forecast card; 7-day values are surfaced in its secondary details when present.
-    setText("intelligence-state", first(intel.intelligence_state, intel.state));
-    setText("market-state", first(intel.market_state, intel.market));
-    setText("intelligence-signal", first(intel.signal, intel.market_signal));
+    setText("intelligence-state", pick(intel.intelligence_state, intel.state));
+    setText("market-state", pick(intel.market_state, intel.market));
+    setText("intelligence-signal", pick(intel.signal, intel.market_signal));
     setText("intelligence-direction", direction);
-    const latest = first(
-      intel.latest_price,
-      root.latest_price,
-      intel.current_price
-    );
-    if (latest !== undefined)
-      setText("intelligence-price", formatNumber(latest));
-    if (f7 !== undefined) setText("forecast-7-price", formatNumber(f7));
-    if (c7 !== undefined) setText("forecast-7-change", formatPercent(c7));
-    if (f30 !== undefined) {
-      setText("ensemble-forecast", formatNumber(f30));
-      setText("forecast-price", formatNumber(f30));
-    }
-    if (c30 !== undefined) {
-      setText("expected-change", formatPercent(c30));
-      setText("forecast-change", formatPercent(c30));
-    }
-    if (direction !== undefined) setText("forecast-direction", direction);
-    const low = first(intel.forecast_low, h30.range_low, h30.forecast_low);
-    const high = first(intel.forecast_high, h30.range_high, h30.forecast_high);
-    if (low !== undefined && high !== undefined) {
-      setText("forecast-range", `${formatNumber(low)} – ${formatNumber(high)}`);
-      setText("forecast-low", formatNumber(low));
-      setText("forecast-high", formatNumber(high));
-    }
-    const confidence = first(
-      intel.confidence_index,
-      intel.confidence,
-      h30.confidence
-    );
-    if (confidence !== undefined)
-      setText(
-        "forecast-confidence",
-        `${formatNumber(confidence, 0)}${ Number(confidence) <= 1 ? "%" : "/100" }`
-      );
     setText(
-      "intelligence-confidence",
-      confidence === undefined ? null : `${formatNumber(confidence, 0)}/100`
-    );
-    setText("intelligence-risk", first(intel.risk_level, intel.risk));
-    setText(
-      "model-agreement",
-      first(intel.model_agreement, intel.agreement, h30.model_agreement)
+      "intelligence-price",
+      formatNumber(
+        pick(intel.latest_price, root.latest_price, intel.current_price)
+      )
     );
 
-    // Model forecasts plus model metrics are rendered in the page's existing breakdown/table if present.
+    // Show both forecast horizons, as in Streamlit's executive view.
+    setText("forecast-7-price", f7 == null ? "—" : formatNumber(f7));
+    setText("forecast-7-change", c7 == null ? "—" : formatPercent(c7));
+    setText("forecast-30-price", f30 == null ? "—" : formatNumber(f30));
+    setText("forecast-30-change", c30 == null ? "—" : formatPercent(c30));
+
+    // Streamlit's main forecast is the 30-day ensemble.
+    setText("ensemble-forecast", f30 == null ? "—" : formatNumber(f30));
+    setText("expected-change", c30 == null ? "—" : formatPercent(c30));
+    setText("forecast-direction", direction || "—");
+    const low = pick(intel.forecast_low, e30.range_low, e30.forecast_low);
+    const high = pick(intel.forecast_high, e30.range_high, e30.forecast_high);
+    setText(
+      "forecast-range",
+      low != null && high != null
+        ? `${formatNumber(low)} – ${formatNumber(high)}`
+        : pick(intel.forecast_range, e30.forecast_range)
+    );
+    const conf = pick(intel.confidence_index, intel.confidence, e30.confidence);
+    setText(
+      "forecast-confidence",
+      conf == null
+        ? "—"
+        : `${formatNumber(Number(conf) <= 1 ? Number(conf) * 100 : conf, 0)}%`
+    );
+    setText("intelligence-risk", pick(intel.risk_level, intel.risk, e30.risk));
+    setText(
+      "model-agreement",
+      pick(
+        intel.model_agreement,
+        intel.agreement,
+        e30.agreement,
+        e30.ensemble_agreement
+      )
+    );
+
     const models = Array.isArray(intel.models)
       ? intel.models
       : Array.isArray(root.models)
       ? root.models
       : [];
-    const norm = (x) =>
-      String(x ?? "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "");
-    const model = (...aliases) =>
-      models.find((m) =>
-        aliases.map(norm).includes(norm(m.model ?? m.name ?? m.model_name))
+    const modelValue = (...aliases) => {
+      const norm = (x) =>
+        String(x ?? "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
+      const wanted = aliases.map(norm);
+      const m = models.find((x) =>
+        wanted.includes(norm(x?.model ?? x?.name ?? x?.model_name))
       );
-    const val = (m) =>
-      m &&
-      first(m.forecast, m.forecast_price, m.prediction, m.ensemble_forecast);
-    const xgb = val(model("xgboost", "xgb")),
-      rf = val(model("random forest", "randomforest", "rf")),
-      ts = val(model("time-series", "timeseries", "arima"));
-    if (xgb !== undefined) setText("xgb-forecast", formatNumber(xgb));
-    if (rf !== undefined) setText("rf-forecast", formatNumber(rf));
-    if (ts !== undefined) setText("ts-forecast", formatNumber(ts));
-    if (f30 !== undefined) setText("model-ensemble", formatNumber(f30));
-    renderList("drivers", first(intel.drivers, intel.key_drivers, []));
-    renderList(
-      "cautions",
-      first(intel.cautions, intel.risks, intel.risk_factors, [])
+      return pick(m?.forecast, m?.forecast_price, m?.prediction);
+    };
+    setText(
+      "xgb-forecast",
+      modelValue("xgboost", "xgb") == null
+        ? "—"
+        : formatNumber(modelValue("xgboost", "xgb"))
     );
-    return raw;
+    setText(
+      "rf-forecast",
+      modelValue("random forest", "randomforest", "rf") == null
+        ? "—"
+        : formatNumber(modelValue("random forest", "randomforest", "rf"))
+    );
+    setText(
+      "ts-forecast",
+      modelValue("time-series", "timeseries", "arima") == null
+        ? "—"
+        : formatNumber(modelValue("time-series", "timeseries", "arima"))
+    );
+    setText("model-ensemble", f30 == null ? "—" : formatNumber(f30));
+    renderList("drivers", pick(intel.drivers, intel.key_drivers, []));
+    renderList("cautions", pick(intel.cautions, intel.risk_factors, []));
+    return response;
   } catch (error) {
     console.error("Market intelligence loading failed:", error);
     return null;
@@ -741,4 +737,17 @@ function findNavigationTarget(navItem) {
     calculator: ["calculator", "calculator-section", "cocoa-calculator"],
   };
 
-  const allCandidates = [...(aliases[text] || []), ...candida
+  const allCandidates = [...(aliases[text] || []), ...candidates];
+
+  for (const id of allCandidates) {
+    const target = document.getElementById(id);
+
+    if (target) {
+      return target;
+    }
+  }
+
+  /* Last fallback: search sections by heading text. */
+  const sections = document.querySelectorAll("section, [data-section]");
+
+  for (const section of sections
