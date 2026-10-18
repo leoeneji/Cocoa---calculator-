@@ -19,7 +19,8 @@ Purpose:
    CONFIGURATION
 ============================================================= */
 const API_BASE = "https://cocoa-calculator-api.onrender.com";
-
+window.addEventListener("error", e => alert("JS error: " + e.message));
+window.addEventListener("unhandledrejection", e => alert("Fetch/async error: " + e.reason));
 /* =============================================================
    HELPERS
 ============================================================= */
