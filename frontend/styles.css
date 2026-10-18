@@ -1,276 +1,247 @@
-st.markdown("""
-<style>
-
-/* ============================================================
-   COCOA INTELLIGENCE HUB — HIGH CONTRAST THEME
-   Purpose: improve readability without changing the UI layout
-============================================================ */
-
+/* CIH static frontend theme, aligned to Streamlit's cocoa/brown visual language */
 :root {
-    --bg: #f4f7f5;
-    --surface: #ffffff;
-    --surface-soft: #eef3ef;
-    --text: #17231d;
-    --text-secondary: #3f4d45;
-    --muted: #5d6a62;
-    --border: #d6ded8;
-    --accent: #176b4d;
-    --accent-dark: #0e4f39;
-    --danger-bg: #fff1f0;
-    --danger-text: #8a1c1c;
+  --bg: #f6f1eb;
+  --panel: #fffaf4;
+  --ink: #241812;
+  --muted: #806b5d;
+  --line: #d8b99e;
+  --accent: #6b3e26;
+  --accent2: #a66a3f;
+  --soft: #ead9c8;
+  --good: #287a4b;
+  --bad: #a33a32;
+  --radius: 14px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  color: var(--ink);
 }
-
-/* Main application */
-.stApp {
-    background-color: var(--bg);
-    color: var(--text);
+* {
+  box-sizing: border-box;
 }
-
-/* All normal text */
-.stApp,
-.stApp p,
-.stApp span,
-.stApp label,
-.stApp div {
-    color: var(--text);
+body {
+  margin: 0;
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.5;
 }
-
-/* Headings */
-h1, h2, h3, h4, h5, h6 {
-    color: var(--text) !important;
-    font-weight: 800 !important;
-}
-
-/* Secondary text */
-.stCaption,
-[data-testid="stCaptionContainer"] {
-    color: var(--muted) !important;
-}
-
-/* ============================================================
-   PANELS
-============================================================ */
-
-.panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    padding: 1.25rem 1.5rem;
-    box-shadow: 0 5px 18px rgba(23,35,29,.08);
-    color: var(--text);
-}
-
-/* ============================================================
-   METRIC CARDS
-============================================================ */
-
-[data-testid="stMetric"] {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 1rem 1.25rem;
-    box-shadow: 0 5px 18px rgba(23,35,29,.07);
-}
-
-[data-testid="stMetricLabel"] {
-    color: var(--text-secondary) !important;
-    font-weight: 700 !important;
-}
-
-[data-testid="stMetricValue"] {
-    color: var(--text) !important;
-    font-weight: 800 !important;
-}
-
-/* Metric delta */
-[data-testid="stMetricDelta"] {
-    font-weight: 700 !important;
-}
-
-/* ============================================================
-   SECTION LABELS
-============================================================ */
-
-.section-label {
-    color: var(--accent-dark) !important;
-    font-size: .82rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    margin: 1.2rem 0 .7rem 0;
-}
-
-/* ============================================================
-   MINI CARDS
-============================================================ */
-
-.mini-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 1rem;
-    margin-bottom: .7rem;
-    box-shadow: 0 5px 18px rgba(23,35,29,.05);
-}
-
-.mini-title {
-    color: var(--muted) !important;
-    font-size: .8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-}
-
-.mini-value {
-    color: var(--text) !important;
-    font-size: 1.25rem;
-    font-weight: 800;
-    margin-top: .25rem;
-}
-
-/* ============================================================
-   HERO
-============================================================ */
-
-.hero {
-    background: linear-gradient(135deg, #0e4f39, #176b4d);
-    color: white !important;
-    border-radius: 20px;
-    padding: 1.7rem 2rem;
-    margin-bottom: 1.4rem;
-    box-shadow: 0 8px 24px rgba(14,79,57,.18);
-}
-
-.hero * {
-    color: white !important;
-}
-
-.hero-title {
-    font-size: 2.1rem;
-    font-weight: 850;
-    margin-top: .4rem;
-}
-
-.hero-sub {
-    font-size: 1rem;
-    opacity: .95;
-    margin-top: .35rem;
-}
-
-.badge {
-    font-size: .75rem;
-    font-weight: 800;
-    letter-spacing: .08em;
-}
-
-/* ============================================================
-   CAUTIONS / WARNINGS
-============================================================ */
-
-.caution,
-.warning,
-[data-testid="stAlert"] {
-    color: var(--text) !important;
-}
-
-[data-testid="stAlert"] p,
-[data-testid="stAlert"] div,
-[data-testid="stAlert"] span {
-    color: var(--text) !important;
-}
-
-/* ============================================================
-   TABLES
-============================================================ */
-
-[data-testid="stDataFrame"] {
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-}
-
-/* ============================================================
-   TABS
-============================================================ */
-
-.stTabs [data-baseweb="tab-list"] {
-    gap: .35rem;
-    background: #e2e9e4;
-    padding: .35rem;
-    border-radius: 14px;
-}
-
-.stTabs [data-baseweb="tab"] {
-    border-radius: 10px;
-    padding: .55rem 1rem;
-    color: var(--text-secondary) !important;
-    font-weight: 700;
-}
-
-.stTabs [aria-selected="true"] {
-    background: white;
-    color: var(--accent-dark) !important;
-    box-shadow: 0 3px 12px rgba(23,35,29,.10);
-}
-
-/* ============================================================
-   BUTTONS
-============================================================ */
-
-.stButton > button {
-    background: var(--accent);
-    color: white !important;
-    border: none;
-    border-radius: 12px;
-    font-weight: 700;
-}
-
-.stButton > button:hover {
-    background: var(--accent-dark);
-    color: white !important;
-}
-
-/* ============================================================
-   SIDEBAR
-============================================================ */
-
-section[data-testid="stSidebar"] {
-    background: #edf3ef;
-}
-
-section[data-testid="stSidebar"] * {
-    color: var(--text) !important;
-}
-
-/* ============================================================
-   LINKS
-============================================================ */
-
 a {
-    color: #075f9c !important;
-    font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
 }
-
-/* ============================================================
-   CODE / JSON
-============================================================ */
-
-pre,
-code {
-    color: var(--text) !important;
+a:hover {
+  text-decoration: underline;
 }
-
-/* ============================================================
-   STREAMLIT CHROME
-============================================================ */
-
-#MainMenu {
-    visibility: hidden;
+.sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 230px;
+  background: #2b1b13;
+  color: #fff4e8;
+  padding: 22px 16px;
+  overflow: auto;
 }
-
-footer {
-    visibility: hidden;
+.sidebar a,
+.sidebar button {
+  color: inherit;
 }
-
-</style>
-""", unsafe_allow_html=True)
+.main-content,
+main,
+.content {
+  margin-left: 230px;
+  padding: 24px;
+  max-width: 1500px;
+}
+.section {
+  margin: 0 0 26px;
+}
+.section-heading,
+.panel-header,
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.section-heading h2,
+.section-heading h3,
+.panel-header h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.12rem;
+}
+.section-heading p,
+.panel-header p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+.intelligence-grid,
+.two-column-grid,
+.market-grid,
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.forecast-card,
+.model-card,
+.panel-card,
+.metric-card,
+.price-card,
+.weather-card,
+.news-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 2px 8px #44220c0a;
+}
+.forecast-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+.forecast-main strong,
+.metric-value,
+.price-value {
+  display: block;
+  font-size: 1.55rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.forecast-label,
+.forecast-unit,
+.card-top small,
+.forecast-details span,
+.panel-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+.forecast-direction,
+.experimental-badge,
+.nigeria-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background: var(--soft);
+  color: var(--accent);
+  padding: 5px 9px;
+}
+.forecast-details,
+.fob-components,
+.weather-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.forecast-details strong,
+.fob-components strong,
+.weather-summary strong {
+  display: block;
+  font-size: 0.96rem;
+  margin-top: 3px;
+}
+.model-card table,
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.model-card th,
+.model-card td,
+.data-table th,
+.data-table td {
+  padding: 8px 7px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.model-card th,
+.data-table th {
+  color: var(--muted);
+  font-weight: 650;
+}
+.panel-header {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+.news-region-caption {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.regional-news-group {
+  margin: 0 0 14px;
+}
+.regional-news-group h4 {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.94rem;
+}
+.regional-news-item {
+  padding: 10px 0;
+  border-bottom: 1px solid #eadfd4;
+}
+.regional-news-item h5 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+.regional-news-item p {
+  margin: 5px 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.regional-news-item small {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+ul {
+  padding-left: 20px;
+}
+button,
+.button {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--accent);
+  color: #fff8ef;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+input,
+select {
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  background: #fffaf4;
+  color: var(--ink);
+}
+.status,
+.caption,
+small {
+  color: var(--muted);
+}
+@media (max-width: 850px) {
+  .sidebar {
+    position: static;
+    width: auto;
+  }
+  .main-content,
+  main,
+  .content {
+    margin-left: 0;
+    padding: 16px;
+  }
+  .intelligence-grid,
+  .two-column-grid,
+  .market-grid,
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+   }
