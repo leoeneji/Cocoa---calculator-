@@ -5,6 +5,7 @@ from datetime import date, datetime
 from pydantic import BaseModel
 from pathlib import Path
 import pandas as pd
+from backend.ai_analyst_context import build_analyst_context
 from backend.database.connection import get_connection
 from backend.market_intelligence_engine import build_intelligence
 
@@ -333,7 +334,17 @@ def market_intelligence():
             detail=f"Market intelligence engine failed: {exc}",
         )
 
-
+@app.get("/ai-analyst/context")
+def ai_analyst_context():
+    """Return grounded, read-only context for the future AI analyst."""
+    try:
+        intelligence = build_intelligence()
+        return build_analyst_context(intelligence)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"AI analyst context could not be built: {exc}",
+        )
 
 @app.get("/news")
 def news():
