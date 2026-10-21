@@ -187,6 +187,30 @@ div[data-testid="stCaptionContainer"] p {
 [data-testid="stChatMessage"] em {
     color: #241812 !important;
 }
+/* Chat input: dark text on the light input field */
+[data-testid="stChatInput"] textarea {
+    color: #000000 !important;
+    -webkit-text-fill-color: #000000 !important;
+    caret-color: #000000 !important;
+}
+
+[data-testid="stChatInput"] textarea::placeholder {
+    color: #555555 !important;
+    -webkit-text-fill-color: #555555 !important;
+    opacity: 1 !important;
+}
+
+/* Chat message text: white for readability on CIH's dark page */
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] li,
+[data-testid="stChatMessage"] h1,
+[data-testid="stChatMessage"] h2,
+[data-testid="stChatMessage"] h3,
+[data-testid="stChatMessage"] strong,
+[data-testid="stChatMessage"] em {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
