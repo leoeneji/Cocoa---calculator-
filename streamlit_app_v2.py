@@ -211,6 +211,27 @@ div[data-testid="stCaptionContainer"] p {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
 }
+
+/* AI Analyst: fix white inline-code/highlight backgrounds */
+[data-testid="stChatMessage"] code {
+    background-color: #4a2a1e !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    border: 1px solid #79513d !important;
+    border-radius: 4px;
+    padding: 0.12em 0.3em;
+}
+
+/* Keep any multi-line code blocks readable too */
+[data-testid="stChatMessage"] pre {
+    background-color: #2b1711 !important;
+    color: #ffffff !important;
+}
+
+[data-testid="stChatMessage"] pre code {
+    background-color: transparent !important;
+    border: none !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
