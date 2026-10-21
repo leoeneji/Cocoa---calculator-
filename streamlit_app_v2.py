@@ -177,6 +177,16 @@ div[data-testid="stCaptionContainer"] p {
 #MainMenu, footer {
     visibility: hidden;
 }
+/* Make both user questions and AI answers readable */
+[data-testid="stChatMessage"] p,
+[data-testid="stChatMessage"] li,
+[data-testid="stChatMessage"] h1,
+[data-testid="stChatMessage"] h2,
+[data-testid="stChatMessage"] h3,
+[data-testid="stChatMessage"] strong,
+[data-testid="stChatMessage"] em {
+    color: #241812 !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
