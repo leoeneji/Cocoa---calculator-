@@ -9,6 +9,7 @@ from backend.database.connection import get_connection
 from backend.market_intelligence_engine import build_intelligence
 import os
 from google import genai
+from google.genai import types
 from pydantic import BaseModel, Field
 
 class FXRate(BaseModel):
@@ -361,7 +362,19 @@ def ai_analyst_ask(request: AnalystQuestion):
         intelligence = build_intelligence()
         context = build_analyst_context(intelligence)
 
-        client = genai.Client(api_key=api_key)
+        client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(
+                retry_options=types.HttpRetryOptions(
+                    attempts=6,
+                    initial_delay=1.0,
+                    max_delay=16.0,
+                    exp_base=2.0,
+                    jitter=1.0,
+                    http_status_codes=[429, 500, 502, 503, 504],
+                )
+            ),
+        )
 
         prompt = f"""
 You are the Cocoa Intelligence Hub (CIH) market analyst.
