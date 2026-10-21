@@ -2,13 +2,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import date, datetime
-from pydantic import BaseModel
 from pathlib import Path
 import pandas as pd
 from backend.ai_analyst_context import build_analyst_context
 from backend.database.connection import get_connection
 from backend.market_intelligence_engine import build_intelligence
-
+import os
+from google import genai
+from pydantic import BaseModel, Field
 
 class FXRate(BaseModel):
     base_currency: str
@@ -30,6 +31,8 @@ class CocoaPrice(BaseModel):
 class MarketSnapshot(BaseModel):
     fx: list[FXRate]
     cocoa_prices: list[CocoaPrice]
+class AnalystQuestion(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
 
 
 app = FastAPI(
@@ -344,6 +347,62 @@ def ai_analyst_context():
         raise HTTPException(
             status_code=500,
             detail=f"AI analyst context could not be built: {exc}",
+        )
+@app.post("/ai-analyst/ask")
+def ai_analyst_ask(request: AnalystQuestion):
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="AI analyst is not configured.",
+        )
+
+    try:
+        intelligence = build_intelligence()
+        context = build_analyst_context(intelligence)
+
+        client = genai.Client(api_key=api_key)
+
+        prompt = f"""
+You are the Cocoa Intelligence Hub (CIH) market analyst.
+
+Answer the user's question using only the CIH context supplied below.
+Do not invent market prices, physical spot quotes, data, sources, or forecasts.
+If the context does not contain enough information, clearly say what is missing.
+Distinguish the ICCO benchmark from a verified Nigerian physical spot price.
+Treat Nigerian naira benchmark values as estimates, not guaranteed farm-gate prices.
+Treat forecasts as uncertain model estimates, not guaranteed outcomes.
+Use the benchmark observation date when discussing the latest price.
+Do not execute trades or present advice as a certainty.
+
+CIH context:
+{context}
+
+User question:
+{request.question}
+"""
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+
+        answer = response.text
+        if not answer:
+            raise ValueError("Gemini returned an empty response.")
+
+        return {
+            "answer": answer,
+            "observation_date": context.get("observation_date"),
+            "target": context.get("target"),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI analyst request failed: {exc}",
         )
 
 @app.get("/news")
