@@ -631,13 +631,14 @@ e.metric("Model Agreement", agreement)
 # TABS
 # ============================================================
 
-tab_market, tab_models, tab_context, tab_nigeria, tab_system = st.tabs(
+tab_market, tab_models, tab_context, tab_nigeria, tab_system, tab_analyst = st.tabs(
     [
         "📊 Market",
         "🧠 ML Models",
         "🌦️ Market Context",
         "🇳🇬 Nigeria",
         "⚙️ System",
+        "🤖 AI Analyst",
     ]
 )
 
@@ -1046,7 +1047,65 @@ with tab_system:
     with st.expander("Raw /market-intelligence response"):
         st.json(data)
 
+# ============================================================
+# AI ANALYST
+# ============================================================
 
+with tab_analyst:
+    st.markdown("### Ask the Cocoa Intelligence Hub AI Analyst")
+    st.caption(
+        "Ask about the ICCO benchmark, CIH forecasts, signals, risk, "
+        "or Nigerian cocoa-market context. Answers are analytical estimates, "
+        "not guaranteed physical spot prices or trading advice."
+    )
+
+    if "cih_analyst_messages" not in st.session_state:
+        st.session_state.cih_analyst_messages = []
+
+    # Display previous messages
+    for message in st.session_state.cih_analyst_messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    question = st.chat_input(
+        "Ask a question about cocoa markets or the CIH dashboard..."
+    )
+
+    if question:
+        st.session_state.cih_analyst_messages.append(
+            {"role": "user", "content": question}
+        )
+
+        with st.chat_message("user"):
+            st.markdown(question)
+
+        with st.chat_message("assistant"):
+            with st.spinner("CIH Analyst is thinking..."):
+                try:
+                    analyst_response = requests.post(
+                        f"{API_BASE.rstrip('/')}/ai-analyst/ask",
+                        json={"question": question},
+                        timeout=90,
+                    )
+                    analyst_response.raise_for_status()
+                    answer = analyst_response.json().get("answer")
+
+                    if not answer:
+                        answer = "The analyst API returned no answer."
+
+                except requests.exceptions.RequestException as exc:
+                    answer = (
+                        "I couldn't reach the AI Analyst API. "
+                        "Check that the Streamlit service's API_BASE points "
+                        "to your deployed FastAPI service, then try again. "
+                        f"Request error: {exc}"
+                    )
+
+                st.markdown(answer)
+
+        st.session_state.cih_analyst_messages.append(
+            {"role": "assistant", "content": answer}
+        )
 # ============================================================
 # FOOTER
 # ============================================================
