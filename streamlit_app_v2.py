@@ -917,19 +917,64 @@ with tab_context:
             else []
         )
 
-        st.metric(
-            "Weather Records",
-            len(observations) if isinstance(observations, list) else 0,
-        )
+        if isinstance(observations, list) and observations:
+            weather_df = pd.DataFrame(observations)
+
+            if {"location", "date"}.issubset(weather_df.columns):
+                weather_df["date"] = pd.to_datetime(
+                    weather_df["date"], errors="coerce"
+                )
+
+                latest_weather = (
+                    weather_df.sort_values("date")
+                    .groupby("location", as_index=False)
+                    .tail(1)
+                    .sort_values("location")
+                )
+
+                display_columns = [
+                    ("location", "Location"),
+                    ("date", "Date"),
+                    ("rainfall_mm", "Rainfall (mm)"),
+                    ("temperature_c", "Temperature (°C)"),
+                    ("humidity_pct", "Humidity (%)"),
+                    ("crop_risk_score", "Crop Risk Score"),
+                ]
+
+                available_columns = [
+                    column for column, label in display_columns
+                    if column in latest_weather.columns
+                ]
+
+                latest_weather = latest_weather[available_columns].rename(
+                    columns={
+                        column: label
+                        for column, label in display_columns
+                    }
+                )
+
+                st.dataframe(
+                    latest_weather,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.info("Weather observations are missing location or date.")
+        else:
+            st.info("No weather observations are currently available.")
 
         if isinstance(forecasts, list) and forecasts:
+            st.markdown("#### Weather Forecast")
             st.dataframe(
                 pd.DataFrame(forecasts),
                 use_container_width=True,
                 hide_index=True,
             )
-
-
+        else:
+            st.caption(
+                "Forecast data is currently unavailable. "
+                "The table above shows the latest available observations."
+            )
 # ============================================================
 # NIGERIA
 # ============================================================
